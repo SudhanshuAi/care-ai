@@ -1,0 +1,57 @@
+{
+  "name": "create_appointment",
+  "type": "custom",
+  "description": "Book an appointment after the caller has confirmed branch, doctor, date, and time out loud. ALWAYS include caller_full_name. NEVER create an anonymous booking. Prefer UUIDs from get_clinic_catalog / search_availability. start_time MUST include a timezone offset.",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Short confirmation-hold while writing the booking.",
+  "timeout_ms": 15000,
+  "parameters": {
+    "type": "object",
+    "required": ["patient_id", "caller_full_name", "start_time"],
+    "properties": {
+      "patient_id": {
+        "type": "string",
+        "description": "Patient UUID selected after lookup/disambiguation."
+      },
+      "caller_full_name": {
+        "type": "string",
+        "description": "Exact full name spoken by the caller. Required even if patient_id is known."
+      },
+      "practitioner_id": {
+        "type": "string",
+        "description": "Doctor UUID being booked."
+      },
+      "practitioner_name": {
+        "type": "string",
+        "description": "Doctor name if UUID is not in context."
+      },
+      "branch_id": {
+        "type": "string",
+        "description": "Branch UUID being booked. Must match the branch said out loud."
+      },
+      "branch_name": {
+        "type": "string",
+        "description": "Branch name if UUID is not in context."
+      },
+      "appointment_type_id": {
+        "type": "string",
+        "description": "Appointment type UUID."
+      },
+      "appointment_type_name": {
+        "type": "string",
+        "description": "Appointment type name if UUID is not in context."
+      },
+      "start_time": {
+        "type": "string",
+        "description": "ISO-8601 datetime WITH timezone offset from search_availability, e.g. 2026-07-16T09:00:00+05:30."
+      },
+      "notes": {
+        "type": "string",
+        "description": "Optional short note."
+      }
+    },
+    "additionalProperties": false
+  }
+}

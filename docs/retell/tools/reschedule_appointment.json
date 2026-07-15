@@ -1,0 +1,50 @@
+{
+  "name": "reschedule_appointment",
+  "type": "custom",
+  "description": "Move an existing booked appointment to a new live-checked slot. Re-search availability first if the caller changed preferences. Mention a cancellation fee ONLY when the tool response says cancellation_fee.applicable is true.",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Short holding phrase while rescheduling.",
+  "timeout_ms": 15000,
+  "parameters": {
+    "type": "object",
+    "required": ["appointment_id", "caller_full_name", "start_time"],
+    "properties": {
+      "appointment_id": {
+        "type": "string",
+        "description": "Existing appointment UUID."
+      },
+      "caller_full_name": {
+        "type": "string",
+        "description": "Caller full name matching the patient on the appointment."
+      },
+      "practitioner_id": {
+        "type": "string"
+      },
+      "practitioner_name": {
+        "type": "string"
+      },
+      "branch_id": {
+        "type": "string"
+      },
+      "branch_name": {
+        "type": "string"
+      },
+      "appointment_type_id": {
+        "type": "string"
+      },
+      "appointment_type_name": {
+        "type": "string"
+      },
+      "start_time": {
+        "type": "string",
+        "description": "New ISO-8601 start time with timezone offset."
+      },
+      "notes": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  }
+}

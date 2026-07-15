@@ -1,0 +1,25 @@
+# Pinned runtime dependencies -- this is what actually gets installed in
+# the Docker image. Kept separate from pyproject.toml so the Docker
+# build can COPY + install this single file first and get a cached
+# layer that only invalidates when a dependency changes, not on every
+# source code change.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+starlette==0.41.3
+
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+structlog==24.4.0
+
+# Test dependencies are installed in the development container so the
+# documented `docker compose exec backend pytest` command works from a
+# clean clone without a second image or manual pip install.
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx==0.28.1

@@ -1,0 +1,34 @@
+{
+  "name": "create_followup",
+  "type": "custom",
+  "description": "Log a human-callback request, clinical concern, or other issue outside booking. Use when the caller asks for a person, raises a medical concern, or needs staff follow-up. Tell the caller someone will call them back — NEVER claim an immediate live transfer is happening.",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Brief acknowledgement while logging the request.",
+  "timeout_ms": 10000,
+  "parameters": {
+    "type": "object",
+    "required": ["category", "notes"],
+    "properties": {
+      "category": {
+        "type": "string",
+        "enum": ["human_requested", "clinical_concern", "other"],
+        "description": "human_requested when the caller wants a person; clinical_concern for medical issues; other otherwise."
+      },
+      "notes": {
+        "type": "string",
+        "description": "Clear summary of what the caller needs."
+      },
+      "patient_id": {
+        "type": "string",
+        "description": "Optional patient UUID if already identified."
+      },
+      "phone": {
+        "type": "string",
+        "description": "Optional override; defaults to the caller's from_number."
+      }
+    },
+    "additionalProperties": false
+  }
+}

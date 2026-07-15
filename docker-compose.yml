@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-careai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-careai_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-careai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - care_ai_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-careai} -d ${POSTGRES_DB:-careai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://careai:careai_dev_password@db:5432/careai}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  care_ai_postgres_data:

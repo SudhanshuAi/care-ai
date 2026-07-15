@@ -1,0 +1,60 @@
+from uuid import uuid4
+from datetime import date
+
+import pytest
+from unittest.mock import MagicMock
+
+from app.adapters.retell.dispatcher import RetellToolDispatcher
+from app.adapters.retell.schemas import RetellCallContext, RetellToolInvocation
+from app.schemas.tools import PatientLookupResponse, PatientSummary
+
+
+class _StubPatientService:
+    async def lookup_by_phone(self, phone: str) -> PatientLookupResponse:
+        return PatientLookupResponse(
+            match_count=2,
+            requires_disambiguation=True,
+            patients=[
+                PatientSummary(
+                    id=uuid4(),
+                    full_name="Arjun Mehta",
+                    phone=phone,
+                    date_of_birth=date(1978, 6, 23),
+                ),
+                PatientSummary(
+                    id=uuid4(),
+                    full_name="Kavya Mehta",
+                    phone=phone,
+                    date_of_birth=date(1980, 9, 15),
+                ),
+            ],
+        )
+
+    async def lookup_by_name(self, name: str) -> PatientLookupResponse:
+        return PatientLookupResponse(
+            match_count=0, requires_disambiguation=False, patients=[]
+        )
+
+
+@pytest.mark.asyncio
+async def test_lookup_patient_uses_phone_and_flags_disambiguation() -> None:
+    dispatcher = RetellToolDispatcher(MagicMock())
+    dispatcher._patient_service = _StubPatientService()  # type: ignore[method-assign]
+
+    result = await dispatcher._lookup_patient(
+        {"phone": "+91-98765-11111"},
+        RetellCallContext(call_id="c1", from_number="+91-98765-11111"),
+    )
+
+    assert result["requires_disambiguation"] is True
+    assert result["match_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_dispatch_unknown_tool_returns_error_payload() -> None:
+    dispatcher = RetellToolDispatcher(MagicMock())
+    response = await dispatcher.dispatch(
+        RetellToolInvocation(name="not_a_real_tool", args={}, call=None)
+    )
+    assert response["ok"] is False
+    assert response["error"]["code"] == "validation_error"

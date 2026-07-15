@@ -1,0 +1,71 @@
+{
+  "name": "search_availability",
+  "type": "custom",
+  "description": "Search LIVE appointment availability from the database. NEVER invent slots from memory. Re-run this tool whenever the caller changes date, time window, doctor, specialty, or branch. Set earliest_only=true when the caller asks for the earliest slot (search across practitioners and branches when filters allow).",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Natural holding phrase while checking live availability, e.g. 'One moment, checking that now' / 'Ek second, main check karti hoon'.",
+  "timeout_ms": 15000,
+  "parameters": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "appointment_type_id": {
+        "type": "string",
+        "description": "UUID of the appointment type from get_clinic_catalog."
+      },
+      "appointment_type_name": {
+        "type": "string",
+        "description": "Human name such as 'Dental Checkup' if UUID is not yet known."
+      },
+      "branch_id": {
+        "type": "string",
+        "description": "UUID of a specific branch. Omit to search across branches."
+      },
+      "branch_name": {
+        "type": "string",
+        "description": "Branch name fragment such as 'Koramangala' or 'Indiranagar'."
+      },
+      "department_id": {
+        "type": "string",
+        "description": "UUID of a specialty/department."
+      },
+      "department_name": {
+        "type": "string",
+        "description": "Specialty name such as 'Dentistry' or 'Physiotherapy'."
+      },
+      "practitioner_id": {
+        "type": "string",
+        "description": "UUID of a specific doctor when the caller named one."
+      },
+      "practitioner_name": {
+        "type": "string",
+        "description": "Doctor display-name fragment such as 'Ananya Rao'."
+      },
+      "appointment_date": {
+        "type": "string",
+        "description": "Local calendar date YYYY-MM-DD in the branch timezone. Use today for same-day requests."
+      },
+      "start_time": {
+        "type": "string",
+        "description": "Optional local lower bound HH:MM:SS (e.g. 16:30:00 for after 4:30)."
+      },
+      "end_time": {
+        "type": "string",
+        "description": "Optional local upper bound HH:MM:SS."
+      },
+      "earliest_only": {
+        "type": "boolean",
+        "description": "If true, return only the earliest matching slot across eligible practitioners/branches."
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Maximum slots to return when earliest_only is false. Default 5.",
+        "minimum": 1,
+        "maximum": 20
+      }
+    },
+    "additionalProperties": false
+  }
+}

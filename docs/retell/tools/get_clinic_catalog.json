@@ -1,0 +1,15 @@
+{
+  "name": "get_clinic_catalog",
+  "type": "custom",
+  "description": "Fetch live branch, department, practitioner, and appointment-type IDs and names from the clinic database. Call this once early if the caller names a branch, doctor, specialty, or visit type and you do not yet have the corresponding UUIDs.",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Short holding phrase while loading clinic schedule options.",
+  "timeout_ms": 10000,
+  "parameters": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

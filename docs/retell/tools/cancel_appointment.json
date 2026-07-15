@@ -1,0 +1,29 @@
+{
+  "name": "cancel_appointment",
+  "type": "custom",
+  "description": "Cancel a booked appointment. Mention a cancellation fee ONLY when cancellation_fee.applicable is true in the response. Do not invent fees.",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Short holding phrase while cancelling.",
+  "timeout_ms": 15000,
+  "parameters": {
+    "type": "object",
+    "required": ["appointment_id", "caller_full_name"],
+    "properties": {
+      "appointment_id": {
+        "type": "string",
+        "description": "Appointment UUID to cancel."
+      },
+      "caller_full_name": {
+        "type": "string",
+        "description": "Caller full name matching the patient."
+      },
+      "reason": {
+        "type": "string",
+        "description": "Optional cancellation reason."
+      }
+    },
+    "additionalProperties": false
+  }
+}

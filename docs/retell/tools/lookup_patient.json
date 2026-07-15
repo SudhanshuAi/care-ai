@@ -1,0 +1,24 @@
+{
+  "name": "lookup_patient",
+  "type": "custom",
+  "description": "Look up patient records by phone and/or full name. ALWAYS call this when a caller phone may map to multiple people (family shared line). Never assume identity when match_count > 1 or requires_disambiguation is true — ask for the caller's full name and call again with both phone and full_name.",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Brief holding phrase while looking up the patient, matched to the caller's language (English or Hindi).",
+  "timeout_ms": 10000,
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "phone": {
+        "type": "string",
+        "description": "Caller phone in E.164 or clinic format. Prefer the inbound from_number when available."
+      },
+      "full_name": {
+        "type": "string",
+        "description": "Caller full name used to disambiguate shared phone numbers."
+      }
+    },
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,65 @@
+# =========================
+# Environment
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.pyre/
+.hypothesis/
+
+# =========================
+# Docker
+# =========================
+*.log
+docker-compose.override.yml
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Alembic
+# =========================
+backend/alembic/versions/__pycache__/
+
+# =========================
+# Misc
+# =========================
+*.sqlite3
+*.db
+
+# Assignment
+ASSIGNMENT.md

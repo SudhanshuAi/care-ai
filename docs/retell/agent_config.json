@@ -1,0 +1,49 @@
+{
+  "agent_name": "Sunrise Maya Receptionist",
+  "response_engine": {
+    "type": "retell-llm",
+    "notes": "Uses Retell-hosted LLM with Custom Functions pointing at our /webhooks/retell/tools adapter. Backend /tools APIs remain unchanged."
+  },
+  "voice": {
+    "voice_provider": "elevenlabs",
+    "recommended_voice": "multilingual Indian English / Hindi capable voice from Retell ElevenLabs catalog (e.g. a warm female voice with Hindi support)",
+    "language": "multi",
+    "language_mode": "auto",
+    "notes": "Do not pin to English-only. Auto / multilingual enables mid-call code-switching without a translation table."
+  },
+  "speech_settings": {
+    "interruption_sensitivity": "medium_high",
+    "responsiveness": "high",
+    "enable_backchannel": true,
+    "reminder_trigger_ms": 10000,
+    "reminder_max_count": 1,
+    "end_call_after_silence_ms": 45000,
+    "notes": "Retell VAD handles barge-in. Medium-high interruption sensitivity keeps the agent stoppable without cutting off on brief ambient noise."
+  },
+  "stt": {
+    "provider": "retell_managed",
+    "language_hint": "en-IN + hi-IN multi",
+    "notes": "Use Retell's multilingual ASR. No custom dictionary. Accept Hindi, English, and mixed transcripts."
+  },
+  "tts": {
+    "provider": "elevenlabs_via_retell",
+    "streaming": true,
+    "normalize_caps_names": true
+  },
+  "begin_message": "Namaste, thank you for calling Sunrise Multispecialty Clinic. This is Maya — how can I help you today?",
+  "general_prompt_file": "../prompts/SYSTEM_PROMPT.md",
+  "webhook_url": "{{BACKEND_BASE_URL}}/webhooks/retell/call-ended",
+  "custom_functions": [
+    "tools/lookup_patient.json",
+    "tools/get_clinic_catalog.json",
+    "tools/search_availability.json",
+    "tools/create_appointment.json",
+    "tools/reschedule_appointment.json",
+    "tools/cancel_appointment.json",
+    "tools/create_followup.json"
+  ],
+  "post_call_analysis": {
+    "enabled": true,
+    "notes": "Optional; evaluation harness comes in a later milestone."
+  }
+}
