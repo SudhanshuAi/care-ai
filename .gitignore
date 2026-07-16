@@ -61,5 +61,11 @@ backend/alembic/versions/__pycache__/
 *.sqlite3
 *.db
 
-# Assignment
+# Assignment (do not submit the brief itself)
 ASSIGNMENT.md
+
+# Evaluation harness generated outputs (re-run: python -m evaluation.runner)
+backend/evaluation/evaluation_report.json
+backend/evaluation/evaluation_report.md
+backend/evaluation/evaluation_summary.csv
+backend/evaluation/reports/
