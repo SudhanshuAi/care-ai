@@ -148,7 +148,7 @@ class AppointmentService:
                 appointment.patient.full_name,
                 slot.practitioner_name,
                 slot.branch_name,
-                "",
+                appointment.appointment_type.name,
                 fee,
             )
             self._store_idempotency(
