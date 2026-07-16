@@ -81,6 +81,7 @@ Dashboard → **Agents** → Create / Edit:
 |---|---|
 | `lookup_patient` | `PatientService` by phone and/or name |
 | `get_clinic_catalog` | Live DB catalog (Retell-only helper; not a `/tools` route) |
+| `list_appointments` | `AppointmentService.list_for_patient` — lets the agent find a real `appointment_id` for reschedule/cancel without the caller quoting one |
 | `search_availability` | `AvailabilityService.search` (no cache) |
 | `create_appointment` | `AppointmentService.create` + generated Idempotency-Key |
 | `reschedule_appointment` | `AppointmentService.reschedule` |

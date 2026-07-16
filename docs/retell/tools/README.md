@@ -4,6 +4,7 @@
   "tools": [
     "lookup_patient.json",
     "get_clinic_catalog.json",
+    "list_appointments.json",
     "search_availability.json",
     "create_appointment.json",
     "reschedule_appointment.json",

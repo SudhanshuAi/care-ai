@@ -36,6 +36,7 @@
   "custom_functions": [
     "tools/lookup_patient.json",
     "tools/get_clinic_catalog.json",
+    "tools/list_appointments.json",
     "tools/search_availability.json",
     "tools/create_appointment.json",
     "tools/reschedule_appointment.json",

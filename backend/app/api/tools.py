@@ -24,6 +24,7 @@ from app.schemas.tools import (
     CreateAppointmentRequest,
     FollowUpRequest,
     FollowUpResponse,
+    PatientAppointmentsResponse,
     PatientLookupResponse,
     RescheduleAppointmentRequest,
 )
@@ -107,6 +108,25 @@ async def search_availability(
     service: Annotated[AvailabilityService, Depends(availability_service)],
 ) -> AvailabilitySearchResponse:
     return await service.search(request)
+
+
+@router.get(
+    "/patients/{patient_id}/appointments",
+    response_model=PatientAppointmentsResponse,
+    summary="List a patient's appointments so a caller can reschedule/cancel by voice",
+)
+async def list_patient_appointments(
+    patient_id: UUID,
+    service: Annotated[AppointmentService, Depends(appointment_service)],
+    upcoming_only: Annotated[
+        bool,
+        Query(description="Restrict to future BOOKED appointments (default)."),
+    ] = True,
+) -> PatientAppointmentsResponse:
+    appointments = await service.list_for_patient(
+        patient_id, upcoming_only=upcoming_only
+    )
+    return PatientAppointmentsResponse(appointments=appointments)
 
 
 @router.post(

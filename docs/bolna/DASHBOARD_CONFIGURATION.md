@@ -58,6 +58,7 @@ In the Bolna **Tools** tab, add each JSON file under `tools/` via
 |---|---|
 | `lookup_patient.json` | `/webhooks/bolna/tools/lookup_patient` |
 | `get_clinic_catalog.json` | `/webhooks/bolna/tools/get_clinic_catalog` |
+| `list_appointments.json` | `/webhooks/bolna/tools/list_appointments` |
 | `search_availability.json` | `/webhooks/bolna/tools/search_availability` |
 | `create_appointment.json` | `/webhooks/bolna/tools/create_appointment` |
 | `reschedule_appointment.json` | `/webhooks/bolna/tools/reschedule_appointment` |

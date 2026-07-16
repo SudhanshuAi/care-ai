@@ -1,0 +1,31 @@
+{
+  "name": "list_appointments",
+  "description": "List a patient's appointments (upcoming BOOKED ones by default). ALWAYS call this to get the real appointment_id before reschedule_appointment or cancel_appointment when the caller has not already given you a UUID from this conversation. Never invent or guess an appointment_id.",
+  "pre_call_message": "One moment, pulling up your appointments.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "patient_id": {
+        "type": "string",
+        "description": "Patient UUID from lookup_patient. Required."
+      },
+      "upcoming_only": {
+        "type": "boolean",
+        "description": "Defaults to true: only future booked appointments."
+      }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/list_appointments",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "patient_id": "%(patient_id)s",
+      "upcoming_only": "%(upcoming_only)s"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "list_appointments",
+  "type": "custom",
+  "description": "List a patient's appointments (upcoming BOOKED ones by default). ALWAYS call this to get the real appointment_id before reschedule_appointment or cancel_appointment when the caller has not already given you a UUID from this conversation. Never invent or guess an appointment_id.",
+  "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
+  "method": "POST",
+  "speak_during_execution": true,
+  "execution_message_description": "Short holding phrase while pulling up the patient's appointments.",
+  "timeout_ms": 10000,
+  "parameters": {
+    "type": "object",
+    "required": ["patient_id"],
+    "properties": {
+      "patient_id": {
+        "type": "string",
+        "description": "Patient UUID from lookup_patient. Required."
+      },
+      "upcoming_only": {
+        "type": "boolean",
+        "description": "Defaults to true: only future booked appointments. Set false to include past/cancelled history if the caller asks about a specific old visit."
+      }
+    },
+    "additionalProperties": false
+  }
+}

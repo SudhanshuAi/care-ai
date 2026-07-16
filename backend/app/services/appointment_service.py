@@ -34,6 +34,7 @@ from app.schemas.tools import (
     CancelAppointmentRequest,
     CreateAppointmentRequest,
     FeeResult,
+    PatientAppointmentSummary,
     RescheduleAppointmentRequest,
 )
 from app.services.availability_service import AvailabilityService
@@ -295,6 +296,32 @@ class AppointmentService:
                 )
         await record_cancel_success(replay=bool(response.idempotent_replay))
         return response
+
+    async def list_for_patient(
+        self, patient_id: UUID, *, upcoming_only: bool = True
+    ) -> list[PatientAppointmentSummary]:
+        patient = await self._patients.by_id(patient_id)
+        if patient is None:
+            raise NotFoundError("Patient was not found.")
+        appointments = await self._appointments.list_for_patient(
+            patient_id, upcoming_only=upcoming_only
+        )
+        return [
+            PatientAppointmentSummary(
+                appointment_id=appointment.id,
+                status=appointment.status.value,
+                practitioner_id=appointment.practitioner_id,
+                practitioner_name=appointment.practitioner.display_name,
+                branch_id=appointment.branch_id,
+                branch_name=appointment.branch.name,
+                appointment_type_id=appointment.appointment_type_id,
+                appointment_type_name=appointment.appointment_type.name,
+                start_time=appointment.start_time,
+                end_time=appointment.end_time,
+                notes=appointment.notes,
+            )
+            for appointment in appointments
+        ]
 
     async def _assert_booking_targets(
         self,

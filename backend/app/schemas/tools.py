@@ -203,6 +203,24 @@ class AppointmentConfirmation(ApiModel):
     cancellation_fee: FeeResult | None = None
 
 
+class PatientAppointmentSummary(ApiModel):
+    appointment_id: UUID
+    status: str
+    practitioner_id: UUID
+    practitioner_name: str
+    branch_id: UUID
+    branch_name: str
+    appointment_type_id: UUID
+    appointment_type_name: str
+    start_time: datetime
+    end_time: datetime
+    notes: str | None = None
+
+
+class PatientAppointmentsResponse(ApiModel):
+    appointments: list[PatientAppointmentSummary]
+
+
 class FollowUpRequest(ApiModel):
     model_config = ConfigDict(
         json_schema_extra={

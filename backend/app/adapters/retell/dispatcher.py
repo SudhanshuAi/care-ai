@@ -136,6 +136,8 @@ class RetellToolDispatcher:
                 result = await self._lookup_patient(args, call)
             elif name == "get_clinic_catalog":
                 result = await self._get_clinic_catalog()
+            elif name == "list_appointments":
+                result = await self._list_appointments(args)
             elif name == "search_availability":
                 result = await self._search_availability(args)
             elif name == "create_appointment":
@@ -440,6 +442,18 @@ class RetellToolDispatcher:
             ],
         }
 
+    async def _list_appointments(self, args: dict[str, Any]) -> dict[str, Any]:
+        patient_id = self._require_uuid(args.get("patient_id"), "patient_id")
+        upcoming_only = bool(args.get("upcoming_only", True))
+        appointments = await self._appointment_service.list_for_patient(
+            patient_id, upcoming_only=upcoming_only
+        )
+        return {
+            "appointments": [
+                appointment.model_dump(mode="json") for appointment in appointments
+            ]
+        }
+
     async def _search_availability(self, args: dict[str, Any]) -> dict[str, Any]:
         request = AvailabilitySearchRequest(
             appointment_type_id=await self._resolve_appointment_type_id(args),
@@ -493,7 +507,7 @@ class RetellToolDispatcher:
     async def _reschedule_appointment(
         self, args: dict[str, Any], call: RetellCallContext | None
     ) -> dict[str, Any]:
-        appointment_id = self._require_uuid(args.get("appointment_id"), "appointment_id")
+        appointment_id = self._require_appointment_id(args.get("appointment_id"))
         request = RescheduleAppointmentRequest(
             caller_full_name=str(args["caller_full_name"]).strip(),
             practitioner_id=await self._resolve_practitioner_id(args),
@@ -511,7 +525,7 @@ class RetellToolDispatcher:
     async def _cancel_appointment(
         self, args: dict[str, Any], call: RetellCallContext | None
     ) -> dict[str, Any]:
-        appointment_id = self._require_uuid(args.get("appointment_id"), "appointment_id")
+        appointment_id = self._require_appointment_id(args.get("appointment_id"))
         request = CancelAppointmentRequest(
             caller_full_name=str(args["caller_full_name"]).strip(),
             reason=args.get("reason"),
@@ -645,6 +659,23 @@ class RetellToolDispatcher:
         if args.get(id_key) or args.get(name_key):
             return await resolver(args)
         return None
+
+    @staticmethod
+    def _require_appointment_id(value: Any) -> UUID:
+        if value is None or str(value).strip() == "":
+            raise ValidationError(
+                "appointment_id is required and must be a real UUID. Call "
+                "list_appointments with the patient_id first to look up the "
+                "existing appointment — never invent a placeholder."
+            )
+        try:
+            return UUID(str(value).strip())
+        except (ValueError, AttributeError, TypeError) as exc:
+            raise ValidationError(
+                f"appointment_id must be a valid UUID (got {value!r}). Call "
+                "list_appointments with the patient_id first to look up the "
+                "existing appointment — never invent a placeholder."
+            ) from exc
 
     @staticmethod
     def _require_uuid(value: Any, field: str) -> UUID:

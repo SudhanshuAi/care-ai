@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -35,6 +35,33 @@ class AppointmentRepository:
             )
         )
         return await self._session.scalar(statement)
+
+    async def list_for_patient(
+        self, patient_id: UUID, *, upcoming_only: bool = True
+    ) -> list[Appointment]:
+        """List a patient's appointments so a caller who doesn't quote an
+        appointment_id can still reschedule/cancel by voice.
+
+        Without this, a voice agent has no legitimate way to discover the
+        UUID of an appointment booked in a *previous* call and may
+        hallucinate a placeholder instead of calling this first.
+        """
+
+        conditions = [Appointment.patient_id == patient_id]
+        if upcoming_only:
+            conditions.append(Appointment.status == AppointmentStatus.BOOKED)
+            conditions.append(Appointment.start_time >= datetime.now(UTC))
+        statement = (
+            select(Appointment)
+            .where(and_(*conditions))
+            .options(
+                joinedload(Appointment.practitioner),
+                joinedload(Appointment.branch),
+                joinedload(Appointment.appointment_type),
+            )
+            .order_by(Appointment.start_time.asc())
+        )
+        return list((await self._session.scalars(statement)).all())
 
     async def patient_has_overlapping_booking(
         self,
