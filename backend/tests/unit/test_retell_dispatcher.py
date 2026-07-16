@@ -58,3 +58,48 @@ async def test_dispatch_unknown_tool_returns_error_payload() -> None:
     )
     assert response["ok"] is False
     assert response["error"]["code"] == "validation_error"
+
+
+@pytest.mark.asyncio
+async def test_create_appointment_rejects_non_uuid_patient_id() -> None:
+    """Retell sometimes passes a patient name where a UUID is required."""
+
+    dispatcher = RetellToolDispatcher(MagicMock())
+    response = await dispatcher.dispatch(
+        RetellToolInvocation(
+            name="create_appointment",
+            args={
+                "patient_id": "Rahul Verma",
+                "caller_full_name": "Rahul Verma",
+                "practitioner_name": "Dr. Ananya Rao",
+                "branch_name": "Koramangala Branch",
+                "appointment_type_name": "Dental Checkup",
+                "start_time": "2026-07-23T09:00:00+05:30",
+            },
+            call=RetellCallContext(call_id="call_test"),
+        )
+    )
+
+    assert response["ok"] is False
+    assert response["error"]["code"] == "validation_error"
+    assert "patient_id" in response["error"]["detail"]
+    assert "UUID" in response["error"]["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_appointment_rejects_missing_patient_id() -> None:
+    dispatcher = RetellToolDispatcher(MagicMock())
+    response = await dispatcher.dispatch(
+        RetellToolInvocation(
+            name="create_appointment",
+            args={
+                "caller_full_name": "Rahul Verma",
+                "start_time": "2026-07-23T09:00:00+05:30",
+            },
+            call=None,
+        )
+    )
+
+    assert response["ok"] is False
+    assert response["error"]["code"] == "validation_error"
+    assert "patient_id" in response["error"]["detail"]

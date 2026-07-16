@@ -100,6 +100,17 @@ class RetellToolDispatcher:
                 "tool": name,
                 "error": {"code": exc.code, "detail": exc.detail},
             }
+        except (ValueError, KeyError, TypeError) as exc:
+            # Retell LLMs often invent names/phones where UUIDs are required.
+            # Surface those as tool errors (HTTP 200) so the agent can recover
+            # instead of a bare 500 from the webhook.
+            detail = str(exc) or "Invalid tool arguments."
+            logger.warning("retell_tool_argument_error", tool=name, detail=detail)
+            return {
+                "ok": False,
+                "tool": name,
+                "error": {"code": "validation_error", "detail": detail},
+            }
 
     async def _lookup_patient(
         self, args: dict[str, Any], call: RetellCallContext | None
@@ -238,7 +249,7 @@ class RetellToolDispatcher:
         self, args: dict[str, Any], call: RetellCallContext | None
     ) -> dict[str, Any]:
         request = CreateAppointmentRequest(
-            patient_id=UUID(str(args["patient_id"])),
+            patient_id=self._require_uuid(args.get("patient_id"), "patient_id"),
             caller_full_name=str(args["caller_full_name"]).strip(),
             practitioner_id=await self._resolve_practitioner_id(args),
             branch_id=await self._resolve_branch_id(args),
@@ -253,7 +264,7 @@ class RetellToolDispatcher:
     async def _reschedule_appointment(
         self, args: dict[str, Any], call: RetellCallContext | None
     ) -> dict[str, Any]:
-        appointment_id = UUID(str(args["appointment_id"]))
+        appointment_id = self._require_uuid(args.get("appointment_id"), "appointment_id")
         request = RescheduleAppointmentRequest(
             caller_full_name=str(args["caller_full_name"]).strip(),
             practitioner_id=await self._resolve_practitioner_id(args),
@@ -271,7 +282,7 @@ class RetellToolDispatcher:
     async def _cancel_appointment(
         self, args: dict[str, Any], call: RetellCallContext | None
     ) -> dict[str, Any]:
-        appointment_id = UUID(str(args["appointment_id"]))
+        appointment_id = self._require_uuid(args.get("appointment_id"), "appointment_id")
         request = CancelAppointmentRequest(
             caller_full_name=str(args["caller_full_name"]).strip(),
             reason=args.get("reason"),
@@ -305,10 +316,19 @@ class RetellToolDispatcher:
             )
             call_id = db_call.id
 
-        category = FollowUpCategory(str(args["category"]))
+        try:
+            category = FollowUpCategory(str(args["category"]))
+        except (KeyError, ValueError) as exc:
+            raise ValidationError(
+                "category must be one of: human_requested, clinical_concern, other."
+            ) from exc
         request = FollowUpRequest(
             call_id=call_id,
-            patient_id=UUID(str(args["patient_id"])) if args.get("patient_id") else None,
+            patient_id=(
+                self._require_uuid(args.get("patient_id"), "patient_id")
+                if args.get("patient_id")
+                else None
+            ),
             category=category,
             notes=str(args["notes"]).strip(),
         )
@@ -322,7 +342,7 @@ class RetellToolDispatcher:
 
     async def _resolve_appointment_type_id(self, args: dict[str, Any]) -> UUID:
         if args.get("appointment_type_id"):
-            return UUID(str(args["appointment_type_id"]))
+            return self._require_uuid(args.get("appointment_type_id"), "appointment_type_id")
         name = (args.get("appointment_type_name") or "").strip()
         if not name:
             raise ValidationError(
@@ -342,7 +362,7 @@ class RetellToolDispatcher:
 
     async def _resolve_branch_id(self, args: dict[str, Any]) -> UUID:
         if args.get("branch_id"):
-            return UUID(str(args["branch_id"]))
+            return self._require_uuid(args.get("branch_id"), "branch_id")
         name = (args.get("branch_name") or "").strip()
         if not name:
             raise ValidationError("branch_id or branch_name is required.")
@@ -358,7 +378,7 @@ class RetellToolDispatcher:
 
     async def _resolve_department_id(self, args: dict[str, Any]) -> UUID:
         if args.get("department_id"):
-            return UUID(str(args["department_id"]))
+            return self._require_uuid(args.get("department_id"), "department_id")
         name = (args.get("department_name") or "").strip()
         if not name:
             raise ValidationError("department_id or department_name is required.")
@@ -374,7 +394,7 @@ class RetellToolDispatcher:
 
     async def _resolve_practitioner_id(self, args: dict[str, Any]) -> UUID:
         if args.get("practitioner_id"):
-            return UUID(str(args["practitioner_id"]))
+            return self._require_uuid(args.get("practitioner_id"), "practitioner_id")
         name = (args.get("practitioner_name") or "").strip()
         if not name:
             raise ValidationError("practitioner_id or practitioner_name is required.")
@@ -403,12 +423,33 @@ class RetellToolDispatcher:
         return None
 
     @staticmethod
+    def _require_uuid(value: Any, field: str) -> UUID:
+        if value is None or str(value).strip() == "":
+            raise ValidationError(
+                f"{field} is required and must be a UUID from lookup_patient / "
+                "get_clinic_catalog / search_availability — not a name or phone."
+            )
+        try:
+            return UUID(str(value).strip())
+        except (ValueError, AttributeError, TypeError) as exc:
+            raise ValidationError(
+                f"{field} must be a valid UUID from a prior tool result "
+                f"(got {value!r}). Call lookup_patient / get_clinic_catalog / "
+                "search_availability first and reuse the id fields exactly."
+            ) from exc
+
+    @staticmethod
     def _optional_date(value: Any) -> date | None:
         if value is None or value == "":
             return None
         if isinstance(value, date) and not isinstance(value, datetime):
             return value
-        return date.fromisoformat(str(value)[:10])
+        try:
+            return date.fromisoformat(str(value)[:10])
+        except ValueError as exc:
+            raise ValidationError(
+                f"Invalid date {value!r}; expected YYYY-MM-DD."
+            ) from exc
 
     @staticmethod
     def _optional_time(value: Any) -> time | None:
@@ -419,7 +460,12 @@ class RetellToolDispatcher:
         text = str(value)
         if len(text) == 5:
             text = f"{text}:00"
-        return time.fromisoformat(text)
+        try:
+            return time.fromisoformat(text)
+        except ValueError as exc:
+            raise ValidationError(
+                f"Invalid time {value!r}; expected HH:MM or HH:MM:SS."
+            ) from exc
 
     @staticmethod
     def _require_datetime(value: Any, field: str) -> datetime:
@@ -428,7 +474,13 @@ class RetellToolDispatcher:
         if isinstance(value, datetime):
             parsed = value
         else:
-            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            try:
+                parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValidationError(
+                    f"{field} must be an ISO-8601 datetime with timezone offset "
+                    f"(got {value!r})."
+                ) from exc
         if parsed.tzinfo is None:
             raise ValidationError(f"{field} must include a timezone offset.")
         return parsed

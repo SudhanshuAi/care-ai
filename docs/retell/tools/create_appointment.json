@@ -13,7 +13,7 @@
     "properties": {
       "patient_id": {
         "type": "string",
-        "description": "Patient UUID selected after lookup/disambiguation."
+        "description": "Exact patient UUID from lookup_patient (patients[].id). NEVER pass a name or phone here."
       },
       "caller_full_name": {
         "type": "string",
