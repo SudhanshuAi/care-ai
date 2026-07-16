@@ -11,10 +11,12 @@ class RetellCallContext(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     call_id: str | None = None
+    resumed_from_call_id: str | None = None
     agent_id: str | None = None
     from_number: str | None = None
     to_number: str | None = None
     direction: str | None = None
+    language: str | None = None
     metadata: dict[str, Any] | None = None
 
 

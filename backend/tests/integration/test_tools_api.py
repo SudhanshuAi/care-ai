@@ -81,3 +81,105 @@ async def test_create_appointment_is_idempotent() -> None:
     assert replay.status_code == 201
     assert replay.json()["appointment_id"] == first.json()["appointment_id"]
     assert replay.json()["idempotent_replay"] is True
+
+
+@pytest.mark.asyncio
+async def test_retell_reconnect_restores_call_context() -> None:
+    await seed()
+    original_call_id = f"retell-original-{uuid4()}"
+    resumed_call_id = f"retell-resumed-{uuid4()}"
+    transport = httpx.ASGITransport(app=app)
+    original_payload = {
+        "name": "lookup_patient",
+        "args": {"phone": "+91-98765-10001"},
+        "call": {
+            "call_id": original_call_id,
+            "from_number": "+91-98765-10001",
+            "language": "en-IN",
+        },
+    }
+    resumed_payload = {
+        "name": "lookup_patient",
+        "args": {"phone": "+91-98765-10001"},
+        "call": {
+            "call_id": resumed_call_id,
+            "resumed_from_call_id": original_call_id,
+            "from_number": "+91-98765-10001",
+            "language": "en-IN",
+        },
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        first = await client.post("/webhooks/retell/tools", json=original_payload)
+        assert first.status_code == 200
+        resumed = await client.post("/webhooks/retell/tools", json=resumed_payload)
+        context = await client.get(f"/webhooks/retell/call-context/{resumed_call_id}")
+
+    assert resumed.status_code == 200
+    assert context.status_code == 200
+    body = context.json()
+    assert body["resumed_from_retell_call_id"] == original_call_id
+    assert body["restored"] is True
+    assert body["identified_patient_id"] is not None
+    assert body["last_tool_called"] == "lookup_patient"
+
+
+@pytest.mark.asyncio
+async def test_retell_call_ended_persists_summary_even_without_tool_use() -> None:
+    call_id = f"retell-ended-{uuid4()}"
+    transport = httpx.ASGITransport(app=app)
+    payload = {
+        "call": {
+            "call_id": call_id,
+            "from_number": "+91-98765-10001",
+            "call_status": "completed",
+            "language": "hi-IN",
+        }
+    }
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        ended = await client.post("/webhooks/retell/call-ended", json=payload)
+        context = await client.get(f"/webhooks/retell/call-context/{call_id}")
+
+    assert ended.status_code == 200
+    assert ended.json()["updated"] is True
+    assert ended.json()["conversation_summary"]
+    assert context.json()["language"] == "hi-IN"
+
+
+@pytest.mark.asyncio
+async def test_same_phone_callback_restores_disconnected_call() -> None:
+    disconnected_call_id = f"retell-disconnected-{uuid4()}"
+    callback_call_id = f"retell-callback-{uuid4()}"
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        await client.post(
+            "/webhooks/retell/call-ended",
+            json={
+                "call": {
+                    "call_id": disconnected_call_id,
+                    "from_number": "+91-98765-10002",
+                    "call_status": "disconnected",
+                    "language": "hi-IN",
+                }
+            },
+        )
+        callback = await client.post(
+            "/webhooks/retell/tools",
+            json={
+                "name": "lookup_patient",
+                "args": {"phone": "+91-98765-10002"},
+                "call": {
+                    "call_id": callback_call_id,
+                    "from_number": "+91-98765-10002",
+                },
+            },
+        )
+        context = await client.get(
+            f"/webhooks/retell/call-context/{callback_call_id}"
+        )
+
+    assert callback.status_code == 200
+    assert context.json()["restored"] is True
+    assert context.json()["resumed_from_retell_call_id"] == disconnected_call_id

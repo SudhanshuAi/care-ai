@@ -35,7 +35,9 @@ class Patient(UUIDPkMixin, TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     appointments: Mapped[list[Appointment]] = relationship(back_populates="patient")
-    calls: Mapped[list[Call]] = relationship(back_populates="patient")
+    calls: Mapped[list[Call]] = relationship(
+        back_populates="patient", foreign_keys="Call.patient_id"
+    )
     followups: Mapped[list[FollowUp]] = relationship(back_populates="patient")
 
     def __repr__(self) -> str:

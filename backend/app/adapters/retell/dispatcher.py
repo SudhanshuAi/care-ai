@@ -42,6 +42,7 @@ from app.schemas.tools import (
 )
 from app.services.appointment_service import AppointmentService
 from app.services.availability_service import AvailabilityService
+from app.services.conversation_state_service import ConversationStateService
 from app.services.followup_service import FollowUpService
 from app.services.patient_service import PatientService
 
@@ -56,6 +57,7 @@ class RetellToolDispatcher:
         self._appointments = AppointmentRepository(session)
         self._followups = FollowUpRepository(session)
         self._calls = CallRepository(session)
+        self._conversation_state = ConversationStateService(session, self._calls)
 
         self._patient_service = PatientService(self._patients)
         self._availability_service = AvailabilityService(self._scheduling)
@@ -68,6 +70,7 @@ class RetellToolDispatcher:
         name = invocation.name.strip()
         args = dict(invocation.args or {})
         call = invocation.call
+        conversation = await self._conversation_state.restore_or_create(call)
 
         logger.info(
             "retell_tool_invoked",
@@ -92,6 +95,12 @@ class RetellToolDispatcher:
                 result = await self._create_followup(args, call)
             else:
                 raise ValidationError(f"Unknown Retell tool: {name}")
+            await self._conversation_state.record_tool_result(
+                call=conversation,
+                tool_name=name,
+                args=args,
+                result=result,
+            )
             return {"ok": True, "tool": name, "result": result}
         except DomainError as exc:
             logger.warning("retell_tool_domain_error", tool=name, detail=exc.detail)

@@ -76,7 +76,7 @@ async def test_create_appointment_rejects_non_uuid_patient_id() -> None:
                 "appointment_type_name": "Dental Checkup",
                 "start_time": "2026-07-23T09:00:00+05:30",
             },
-            call=RetellCallContext(call_id="call_test"),
+            call=None,
         )
     )
 

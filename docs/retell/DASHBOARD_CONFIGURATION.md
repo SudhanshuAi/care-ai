@@ -14,6 +14,7 @@ The adapter translates `{ name, args, call }` into the same services the REST la
 | [tools/*.json](tools/) | One Retell Custom Function definition per tool |
 | [../prompts/SYSTEM_PROMPT.md](../prompts/SYSTEM_PROMPT.md) | Production system prompt |
 | [TESTING.md](TESTING.md) | End-to-end testing checklist |
+| [CONVERSATION_MEMORY.md](CONVERSATION_MEMORY.md) | Durable call state and reconnect behavior |
 
 ## 1. Prerequisites
 

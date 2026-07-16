@@ -16,13 +16,15 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.retell.dispatcher import RetellToolDispatcher
-from app.adapters.retell.schemas import RetellToolInvocation
+from app.adapters.retell.schemas import RetellCallContext, RetellToolInvocation
 from app.adapters.retell.security import verify_retell_signature
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.deps import get_db
 from app.repositories.call_repository import CallRepository
+from app.schemas.conversation import ConversationStateResponse
+from app.services.conversation_state_service import ConversationStateService
 
 router = APIRouter(prefix="/webhooks/retell", tags=["retell"])
 logger = get_logger(__name__)
@@ -84,10 +86,43 @@ async def retell_call_ended(
         logger.info("retell_call_ended_ignored", reason="missing_call_id")
         return {"ok": True, "updated": False}
 
-    async with db.begin():
-        call = await CallRepository(db).mark_completed(str(retell_call_id))
+    state_service = ConversationStateService(db, CallRepository(db))
+    # A call that never reached a function still has a terminal Retell
+    # webhook. Create its memory row here so every Retell call is
+    # durable, not only calls that invoked a scheduling tool.
+    await state_service.restore_or_create(RetellCallContext.model_validate(call_obj))
+
+    status_value = str(
+        call_obj.get("call_status")
+        or call_obj.get("status")
+        or body.get("event")
+        or ""
+    ).lower()
+    disconnected = any(
+        marker in status_value
+        for marker in ("disconnect", "dropped", "error", "failed")
+    )
+    state = await state_service.complete(
+        retell_call_id=str(retell_call_id), disconnected=disconnected
+    )
     return {
         "ok": True,
-        "updated": call is not None,
-        "call_id": str(call.id) if call else None,
+        "updated": state is not None,
+        "call_id": state.database_call_id if state else None,
+        "conversation_summary": state.conversation_summary if state else None,
+        "disconnected": disconnected,
     }
+
+
+@router.get(
+    "/call-context/{call_id}",
+    response_model=ConversationStateResponse,
+    summary="Retrieve durable conversation memory for a Retell call",
+)
+async def retell_call_context(
+    call_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationStateResponse:
+    """Read-only operational endpoint used to inspect/restore call state."""
+
+    return await ConversationStateService(db, CallRepository(db)).get_state(call_id)

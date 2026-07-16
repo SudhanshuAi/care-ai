@@ -4,8 +4,9 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -74,8 +75,40 @@ class Call(UUIDPkMixin, TimestampMixin, Base):
         PG_UUID(as_uuid=True), ForeignKey("calls.id", ondelete="SET NULL")
     )
     detected_language_mix: Mapped[str | None] = mapped_column(String(32))
+    # Durable conversation state. These fields are intentionally on
+    # Call rather than in an in-memory cache: a reconnect can occur on
+    # a different process after a deploy or container restart.
+    language: Mapped[str | None] = mapped_column(String(32))
+    current_intent: Mapped[str | None] = mapped_column(String(64))
+    identified_patient_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("patients.id", ondelete="SET NULL"), index=True
+    )
+    selected_branch_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("branches.id", ondelete="SET NULL")
+    )
+    selected_practitioner_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("practitioners.id", ondelete="SET NULL")
+    )
+    selected_appointment_type_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("appointment_types.id", ondelete="SET NULL")
+    )
+    last_availability_search: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    pending_confirmation: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    conversation_summary: Mapped[str | None] = mapped_column(Text)
+    last_tool_called: Mapped[str | None] = mapped_column(String(64))
+    last_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
-    patient: Mapped[Patient | None] = relationship(back_populates="calls")
+    patient: Mapped[Patient | None] = relationship(
+        back_populates="calls", foreign_keys=[patient_id]
+    )
+    identified_patient: Mapped[Patient | None] = relationship(
+        foreign_keys=[identified_patient_id]
+    )
     resumed_from_call: Mapped[Call | None] = relationship(
         remote_side="Call.id", foreign_keys=[resumed_from_call_id]
     )
