@@ -62,7 +62,19 @@ class AvailabilityService:
         if request.start_time and request.end_time and request.start_time >= request.end_time:
             raise ValidationError("start_time must be before end_time.")
 
-        local_date = request.appointment_date or await self._today_for_request(request)
+        reference_today = await self._today_for_request(request)
+        local_date = request.appointment_date or reference_today
+        if local_date < reference_today:
+            # LLM callers sometimes miscompute "today"/"earliest" and pass an
+            # explicit past date. Reject deterministically instead of
+            # silently offering stale slots on a date that has already
+            # passed -- the caller-facing fix is to omit appointment_date
+            # for same-day/earliest requests and let this default to today.
+            raise ValidationError(
+                "appointment_date is in the past. Omit appointment_date for "
+                "'today'/'earliest available' requests, or use today's date "
+                "or later."
+            )
         schedules = await self._repository.eligible_schedules(
             department_id=request.department_id or appointment_type.department_id,
             practitioner_id=request.practitioner_id,
@@ -91,7 +103,13 @@ class AvailabilityService:
                 if request.end_time
                 else schedule_end
             )
-            candidate = self._ceil_to_granularity(max(schedule_start, lower_bound))
+            # For a same-day search, never offer a slot that has already
+            # passed. For a future date this `now` is naturally earlier
+            # than schedule_start and has no effect.
+            now_in_zone = datetime.now(UTC).astimezone(zone)
+            candidate = self._ceil_to_granularity(
+                max(schedule_start, lower_bound, now_in_zone)
+            )
             latest_start = min(schedule_end, upper_bound) - duration - buffer
 
             # Query once per live schedule window. The extra buffer on

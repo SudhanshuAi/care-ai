@@ -1,6 +1,6 @@
 {
   "name": "search_availability",
-  "description": "Search LIVE appointment availability from the database. NEVER invent slots. Re-run whenever the caller changes date, time, doctor, specialty, or branch. Set earliest_only=true for earliest-slot requests.",
+  "description": "Search LIVE appointment availability from the database. NEVER invent slots. Re-run whenever the caller changes date, time, doctor, specialty, or branch. Set earliest_only=true for earliest-slot requests. Leave appointment_date blank for 'today'/'earliest available' requests -- the backend uses the real current date; do not compute or guess it yourself.",
   "pre_call_message": "One moment, checking that now.",
   "parameters": {
     "type": "object",
@@ -15,7 +15,7 @@
       "practitioner_name": { "type": "string" },
       "appointment_date": {
         "type": "string",
-        "description": "YYYY-MM-DD in branch timezone."
+        "description": "YYYY-MM-DD in branch timezone. Leave blank for 'today'/'earliest available' -- never guess today's date."
       },
       "start_time": { "type": "string", "description": "HH:MM:SS local lower bound." },
       "end_time": { "type": "string", "description": "HH:MM:SS local upper bound." },

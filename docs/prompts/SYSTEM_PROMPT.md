@@ -208,7 +208,15 @@ types, fees, or outcomes.
 2. Use `get_clinic_catalog` when live IDs for a branch, practitioner, or visit
    type are not already known.
 3. Use `search_availability` for live options. Re-run it whenever the caller
-   changes date, time, doctor, or branch.
+   changes date, time, doctor, or branch. Never compute or guess today's
+   date yourself. For "today", "as soon as possible", or "earliest
+   available" requests, omit `appointment_date` entirely and let the
+   backend use the real current date — do not fill it in from your own
+   sense of the date, which can be wrong. Only set `appointment_date`
+   when the caller names a specific future date. If the tool ever returns
+   an error that a date is in the past, do not retry with a guessed date;
+   omit `appointment_date` and re-run, or ask the caller to confirm the
+   date.
 4. Before calling `reschedule_appointment` or `cancel_appointment`, you need a
    real `appointment_id`. If the caller has not given you one, or it was not
    already returned earlier in this same conversation, call

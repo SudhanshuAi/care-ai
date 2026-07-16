@@ -357,6 +357,11 @@ class AppointmentService:
     ) -> AvailabilityOffer:
         if start_time.tzinfo is None:
             raise ValidationError("start_time must include a timezone offset.")
+        if start_time < datetime.now(UTC):
+            raise ValidationError(
+                "start_time is in the past. Search live availability again "
+                "for a current or future slot."
+            )
         active = await self._offers.find_active_offer(
             practitioner_id=practitioner_id,
             branch_id=branch_id,

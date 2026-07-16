@@ -45,7 +45,7 @@
       },
       "appointment_date": {
         "type": "string",
-        "description": "Local calendar date YYYY-MM-DD in the branch timezone. Use today for same-day requests."
+        "description": "Local calendar date YYYY-MM-DD in the branch timezone. OMIT this field entirely for 'today', 'as soon as possible', or 'earliest available' requests — the backend defaults to the real current date, which is more reliable than computing it yourself. Only set this when the caller names a specific future date (e.g. 'next Tuesday', 'the 20th')."
       },
       "start_time": {
         "type": "string",
