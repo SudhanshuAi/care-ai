@@ -1,11 +1,12 @@
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.db.models import Appointment, IdempotencyKey
-from app.db.models.enums import IdempotencyOperationType
+from app.db.models.enums import AppointmentStatus, IdempotencyOperationType
 
 
 class AppointmentRepository:
@@ -34,6 +35,36 @@ class AppointmentRepository:
             )
         )
         return await self._session.scalar(statement)
+
+    async def patient_has_overlapping_booking(
+        self,
+        *,
+        patient_id: UUID,
+        start_time: datetime,
+        end_time: datetime,
+        exclude_appointment_id: UUID | None = None,
+    ) -> bool:
+        """True if this patient already has a BOOKED appointment overlapping this range.
+
+        Guards against a patient being double-booked across two different
+        practitioners/branches -- something the practitioner-scoped
+        ``uq_appointment_no_overlap`` exclusion constraint cannot catch on
+        its own, since it only rejects overlaps for the *same*
+        practitioner. This is an application-level check backed by the
+        matching ``uq_appointment_patient_no_overlap`` DB constraint.
+        """
+
+        conditions = [
+            Appointment.patient_id == patient_id,
+            Appointment.status == AppointmentStatus.BOOKED,
+            Appointment.start_time < end_time,
+            Appointment.end_time > start_time,
+        ]
+        if exclude_appointment_id is not None:
+            conditions.append(Appointment.id != exclude_appointment_id)
+        statement = select(func.count()).select_from(Appointment).where(and_(*conditions))
+        count = await self._session.scalar(statement)
+        return bool(count)
 
     async def idempotency_record(
         self, key: str, operation: IdempotencyOperationType

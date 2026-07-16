@@ -76,6 +76,20 @@ def create_app() -> FastAPI:
         # The scheduling constraint is deliberately database-enforced;
         # surface a race/conflict as a useful tool response rather than
         # a generic 500 if a concurrent writer gets there first.
+        if "uq_appointment_patient_no_overlap" in str(exc.orig):
+            if "/create_appointment" in request.url.path:
+                await record_booking_failure(detail="patient_double_booking")
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": (
+                        "This patient already has a booked appointment that "
+                        "overlaps this time. Cancel or reschedule the "
+                        "existing appointment before booking another one."
+                    ),
+                    "code": "patient_double_booking",
+                },
+            )
         if "uq_appointment_no_overlap" in str(exc.orig):
             if "/create_appointment" in request.url.path:
                 await record_booking_failure(detail="appointment_conflict")

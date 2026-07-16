@@ -3,12 +3,13 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from app.core.exceptions import ValidationError
+from app.core.exceptions import ConflictError, ValidationError
 from app.core.guardrails import (
     CALLBACK_EXPECTATION,
     notes_promise_immediate_transfer,
@@ -103,3 +104,32 @@ def test_cancellation_fee_only_inside_window() -> None:
     assert applicable.applicable is True
     assert applicable.amount == Decimal("500.00")
     assert AppointmentService._cancellation_fee(no_fee).applicable is False
+
+
+@pytest.mark.asyncio
+async def test_reject_patient_double_booking_raises_conflict() -> None:
+    service = AppointmentService.__new__(AppointmentService)
+    service._appointments = SimpleNamespace(
+        patient_has_overlapping_booking=AsyncMock(return_value=True)
+    )
+    start = datetime.now(UTC)
+    with pytest.raises(ConflictError, match="already has a booked appointment"):
+        await service._reject_patient_double_booking(
+            patient_id=uuid4(),
+            start_time=start,
+            end_time=start + timedelta(minutes=30),
+        )
+
+
+@pytest.mark.asyncio
+async def test_reject_patient_double_booking_allows_free_patient() -> None:
+    service = AppointmentService.__new__(AppointmentService)
+    service._appointments = SimpleNamespace(
+        patient_has_overlapping_booking=AsyncMock(return_value=False)
+    )
+    start = datetime.now(UTC)
+    await service._reject_patient_double_booking(
+        patient_id=uuid4(),
+        start_time=start,
+        end_time=start + timedelta(minutes=30),
+    )

@@ -102,6 +102,11 @@ class AppointmentService:
                         branch_id=request.branch_id,
                         start_time=request.start_time,
                     )
+                    await self._reject_patient_double_booking(
+                        patient_id=patient.id,
+                        start_time=slot.start_time,
+                        end_time=slot.end_time,
+                    )
                     appointment = Appointment(
                         patient_id=patient.id,
                         practitioner_id=slot.practitioner_id,
@@ -197,6 +202,12 @@ class AppointmentService:
                     practitioner_id=request.practitioner_id,
                     branch_id=request.branch_id,
                     start_time=request.start_time,
+                    exclude_appointment_id=appointment.id,
+                )
+                await self._reject_patient_double_booking(
+                    patient_id=appointment.patient_id,
+                    start_time=slot.start_time,
+                    end_time=slot.end_time,
                     exclude_appointment_id=appointment.id,
                 )
                 fee = self._cancellation_fee(appointment)
@@ -346,6 +357,27 @@ class AppointmentService:
         raise ValidationError(
             "The prior availability search has expired; search again before booking."
         )
+
+    async def _reject_patient_double_booking(
+        self,
+        *,
+        patient_id: UUID,
+        start_time: datetime,
+        end_time: datetime,
+        exclude_appointment_id: UUID | None = None,
+    ) -> None:
+        overlapping = await self._appointments.patient_has_overlapping_booking(
+            patient_id=patient_id,
+            start_time=start_time,
+            end_time=end_time,
+            exclude_appointment_id=exclude_appointment_id,
+        )
+        if overlapping:
+            raise ConflictError(
+                "This patient already has a booked appointment that overlaps "
+                "this time. Cancel or reschedule the existing appointment "
+                "before booking another one."
+            )
 
     @staticmethod
     def _consume_offer(offer: AvailabilityOffer, appointment_id: UUID) -> None:

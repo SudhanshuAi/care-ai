@@ -37,6 +37,15 @@ class Appointment(UUIDPkMixin, TimestampMixin, Base):
     will have one succeed and one fail at the database level -- which a
     purely application-level "check then insert" cannot guarantee.
 
+    `uq_appointment_patient_no_overlap` is the same idea scoped to
+    `patient_id` instead of `practitioner_id`: it stops the *same
+    patient* from ending up with two BOOKED appointments (with two
+    different practitioners/branches) at overlapping times. Without it,
+    nothing at the DB layer stops a patient from being "double booked"
+    -- the application-level check in `AppointmentService` is the first
+    line of defense, but this constraint is what makes it safe under
+    concurrency too.
+
     `pms_sync_status` tracks the mock-PMS write-back outcome
     separately from the booking itself: the appointment is confirmed to
     the caller once *this* row commits, regardless of whether the
@@ -49,6 +58,13 @@ class Appointment(UUIDPkMixin, TimestampMixin, Base):
             ("practitioner_id", "="),
             (text("tstzrange(start_time, end_time, '[)')"), "&&"),
             name="uq_appointment_no_overlap",
+            using="gist",
+            where=text("status = 'booked'"),
+        ),
+        ExcludeConstraint(
+            ("patient_id", "="),
+            (text("tstzrange(start_time, end_time, '[)')"), "&&"),
+            name="uq_appointment_patient_no_overlap",
             using="gist",
             where=text("status = 'booked'"),
         ),

@@ -221,6 +221,92 @@ async def test_booking_without_caller_name_is_rejected() -> None:
 
 
 @pytest.mark.asyncio
+async def test_same_patient_cannot_double_book_overlapping_time() -> None:
+    """Two different practitioners, same patient, overlapping time -> 409.
+
+    The practitioner-scoped `uq_appointment_no_overlap` constraint alone
+    would allow this (different practitioners don't collide), which is
+    exactly the "duplicate appointment" gap this guardrail closes.
+    """
+
+    await seed()
+    async with session_scope() as session:
+        dental_type = await session.scalar(
+            select(AppointmentType).where(AppointmentType.name == "Dental Checkup")
+        )
+        koramangala = await session.scalar(
+            select(Branch).where(Branch.name.ilike("%koramangala%"))
+        )
+        patient = await session.scalar(
+            select(Patient).where(Patient.full_name == "Rahul Verma")
+        )
+        assert dental_type and koramangala and patient
+        appointment_type_id = str(dental_type.id)
+        branch_id = str(koramangala.id)
+        patient_id = str(patient.id)
+
+    transport = httpx.ASGITransport(app=app)
+    target_date = (datetime.now(UTC).date() + timedelta(days=7)).isoformat()
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        availability = await client.post(
+            "/tools/search_availability",
+            json={
+                "appointment_type_id": appointment_type_id,
+                "branch_id": branch_id,
+                "appointment_date": target_date,
+                "limit": 10,
+            },
+        )
+        assert availability.status_code == 200
+        slots = availability.json()["slots"]
+        by_start: dict[str, list[dict]] = {}
+        for slot in slots:
+            by_start.setdefault(slot["start_time"], []).append(slot)
+        overlapping_pair = next(
+            (
+                group
+                for group in by_start.values()
+                if len({slot["practitioner_id"] for slot in group}) > 1
+            ),
+            None,
+        )
+        if overlapping_pair is None:
+            pytest.skip(
+                "Seeded branch has no two practitioners free at the same slot."
+            )
+        first_slot, second_slot = overlapping_pair[0], overlapping_pair[1]
+
+        first = await client.post(
+            "/tools/create_appointment",
+            json={
+                "patient_id": patient_id,
+                "caller_full_name": "Rahul Verma",
+                "practitioner_id": first_slot["practitioner_id"],
+                "branch_id": first_slot["branch_id"],
+                "appointment_type_id": appointment_type_id,
+                "start_time": first_slot["start_time"],
+            },
+            headers={"Idempotency-Key": f"guard-dupe-1-{uuid4()}"},
+        )
+        second = await client.post(
+            "/tools/create_appointment",
+            json={
+                "patient_id": patient_id,
+                "caller_full_name": "Rahul Verma",
+                "practitioner_id": second_slot["practitioner_id"],
+                "branch_id": second_slot["branch_id"],
+                "appointment_type_id": appointment_type_id,
+                "start_time": second_slot["start_time"],
+            },
+            headers={"Idempotency-Key": f"guard-dupe-2-{uuid4()}"},
+        )
+
+    assert first.status_code == 201
+    assert second.status_code == 409
+    assert "already has a booked appointment" in second.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
 async def test_followup_rejects_immediate_transfer_and_duplicates() -> None:
     await seed()
     async with session_scope() as session:
