@@ -9,7 +9,7 @@ it is echoed back in the response header for client-side correlation.
 
 Voice webhooks additionally bind `provider` (retell / bolna / rest).
 Tool dispatchers bind `call_id` / `conversation_id` for conversation-wide
-correlation across reconnects — see `docs/ops/LOGGING.md`.
+correlation across reconnects — see `app.core.observability`.
 
 Endpoint latency is also recorded into the production metrics store
 and Prometheus registry without changing response bodies.

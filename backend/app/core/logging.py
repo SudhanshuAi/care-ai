@@ -6,7 +6,7 @@ Uses `structlog` layered on top of the stdlib `logging` module so that:
   * output is human-readable in local/dev and JSON when `JSON_LOGS=true`,
   * request and conversation context (`request_id`, `call_id`,
     `conversation_id`, `patient_id`, …) merge automatically via
-    contextvars — see `app.core.observability` and `docs/ops/LOGGING.md`.
+    contextvars — see `app.core.observability`.
 """
 
 import logging
