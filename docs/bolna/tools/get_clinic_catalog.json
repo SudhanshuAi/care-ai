@@ -1,0 +1,31 @@
+{
+  "name": "get_clinic_catalog",
+  "description": "Fetch live branch, department, practitioner, and appointment-type IDs and names. Call once early if you need UUIDs for branch/doctor/visit type.",
+  "pre_call_message": "One moment, loading clinic options.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "from_number": {
+        "type": "string",
+        "description": "Inbound caller ID from context {from_number}."
+      },
+      "call_sid": {
+        "type": "string",
+        "description": "Call id from context {call_sid}."
+      }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/get_clinic_catalog",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
+    }
+  }
+}

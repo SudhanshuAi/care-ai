@@ -1,0 +1,41 @@
+{
+  "name": "lookup_patient",
+  "description": "Look up patient records by phone and/or full name. ALWAYS call this when a caller phone may map to multiple people. Never assume identity when match_count > 1 or requires_disambiguation is true.",
+  "pre_call_message": "One moment, looking that up.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "phone": {
+        "type": "string",
+        "description": "Caller phone. Prefer from_number when available."
+      },
+      "full_name": {
+        "type": "string",
+        "description": "Caller full name used to find or disambiguate patients."
+      },
+      "from_number": {
+        "type": "string",
+        "description": "Inbound caller ID from Bolna context {from_number}."
+      },
+      "call_sid": {
+        "type": "string",
+        "description": "Bolna/telephony call id from context {call_sid}."
+      }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/lookup_patient",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "phone": "%(phone)s",
+      "full_name": "%(full_name)s",
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
+    }
+  }
+}

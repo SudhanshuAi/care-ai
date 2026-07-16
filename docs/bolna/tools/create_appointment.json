@@ -1,0 +1,52 @@
+{
+  "name": "create_appointment",
+  "description": "Book an appointment after the caller confirmed branch, doctor, date, and time. ALWAYS include caller_full_name. patient_id MUST be the UUID from lookup_patient — never a name or 'new_patient'. start_time MUST include a timezone offset.",
+  "pre_call_message": "Booking that for you now.",
+  "parameters": {
+    "type": "object",
+    "required": ["patient_id", "caller_full_name", "start_time"],
+    "properties": {
+      "patient_id": {
+        "type": "string",
+        "description": "Exact patients[].id UUID from lookup_patient."
+      },
+      "caller_full_name": { "type": "string" },
+      "practitioner_id": { "type": "string" },
+      "practitioner_name": { "type": "string" },
+      "branch_id": { "type": "string" },
+      "branch_name": { "type": "string" },
+      "appointment_type_id": { "type": "string" },
+      "appointment_type_name": { "type": "string" },
+      "start_time": {
+        "type": "string",
+        "description": "ISO-8601 with offset, e.g. 2026-07-16T09:00:00+05:30"
+      },
+      "notes": { "type": "string" },
+      "from_number": { "type": "string" },
+      "call_sid": { "type": "string" }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/create_appointment",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "patient_id": "%(patient_id)s",
+      "caller_full_name": "%(caller_full_name)s",
+      "practitioner_id": "%(practitioner_id)s",
+      "practitioner_name": "%(practitioner_name)s",
+      "branch_id": "%(branch_id)s",
+      "branch_name": "%(branch_name)s",
+      "appointment_type_id": "%(appointment_type_id)s",
+      "appointment_type_name": "%(appointment_type_name)s",
+      "start_time": "%(start_time)s",
+      "notes": "%(notes)s",
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
+    }
+  }
+}

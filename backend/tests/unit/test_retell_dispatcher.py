@@ -87,6 +87,43 @@ async def test_create_appointment_rejects_non_uuid_patient_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_lookup_falls_back_to_name_when_phone_misses() -> None:
+    """Inbound caller ID often won't match seeded demo phones."""
+
+    class _Stub:
+        async def lookup_by_phone(self, phone: str) -> PatientLookupResponse:
+            return PatientLookupResponse(
+                match_count=0, requires_disambiguation=False, patients=[]
+            )
+
+        async def lookup_by_name(self, name: str) -> PatientLookupResponse:
+            return PatientLookupResponse(
+                match_count=1,
+                requires_disambiguation=False,
+                patients=[
+                    PatientSummary(
+                        id=uuid4(),
+                        full_name="Rahul Verma",
+                        phone="+91-98765-10001",
+                        date_of_birth=date(1990, 4, 12),
+                    )
+                ],
+            )
+
+    dispatcher = RetellToolDispatcher(MagicMock())
+    dispatcher._patient_service = _Stub()  # type: ignore[method-assign]
+
+    result = await dispatcher._lookup_patient(
+        {"phone": "+91-99999-00000", "full_name": "Rahul Verma"},
+        RetellCallContext(call_id="c1", from_number="+91-99999-00000"),
+    )
+
+    assert result["match_count"] == 1
+    assert result["patients"][0]["full_name"] == "Rahul Verma"
+    assert result["lookup_strategy"] == "name_fallback_after_phone_miss"
+
+
+@pytest.mark.asyncio
 async def test_create_appointment_rejects_missing_patient_id() -> None:
     dispatcher = RetellToolDispatcher(MagicMock())
     response = await dispatcher.dispatch(

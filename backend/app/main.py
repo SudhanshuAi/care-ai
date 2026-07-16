@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.health import router as health_router
 from app.api.tools import router as tools_router
+from app.api.webhooks_bolna import router as bolna_webhook_router
 from app.api.webhooks_retell import router as retell_webhook_router
 from app.core.config import get_settings
 from app.core.exceptions import DomainError
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(tools_router)
     app.include_router(retell_webhook_router)
+    app.include_router(bolna_webhook_router)
 
     @app.exception_handler(DomainError)
     async def domain_error_handler(_: Request, exc: DomainError) -> JSONResponse:

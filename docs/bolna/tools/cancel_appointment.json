@@ -1,0 +1,32 @@
+{
+  "name": "cancel_appointment",
+  "description": "Cancel a booked appointment. Mention a cancellation fee ONLY when cancellation_fee.applicable is true. Do not invent fees.",
+  "pre_call_message": "One moment, cancelling that.",
+  "parameters": {
+    "type": "object",
+    "required": ["appointment_id", "caller_full_name"],
+    "properties": {
+      "appointment_id": { "type": "string" },
+      "caller_full_name": { "type": "string" },
+      "reason": { "type": "string" },
+      "from_number": { "type": "string" },
+      "call_sid": { "type": "string" }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/cancel_appointment",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "appointment_id": "%(appointment_id)s",
+      "caller_full_name": "%(caller_full_name)s",
+      "reason": "%(reason)s",
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
+    }
+  }
+}

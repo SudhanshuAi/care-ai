@@ -1,0 +1,40 @@
+{
+  "name": "create_followup",
+  "description": "Log a human-callback request, clinical concern, or other issue outside booking. Tell the caller someone will call them back — NEVER claim an immediate live transfer.",
+  "pre_call_message": "I'll note that down for the team.",
+  "parameters": {
+    "type": "object",
+    "required": ["category", "notes"],
+    "properties": {
+      "category": {
+        "type": "string",
+        "description": "human_requested, clinical_concern, or other"
+      },
+      "notes": { "type": "string" },
+      "patient_id": { "type": "string" },
+      "phone": { "type": "string" },
+      "from_number": { "type": "string" },
+      "call_sid": {
+        "type": "string",
+        "description": "Required for follow-up linkage; use {call_sid}."
+      }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/create_followup",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "category": "%(category)s",
+      "notes": "%(notes)s",
+      "patient_id": "%(patient_id)s",
+      "phone": "%(phone)s",
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
+    }
+  }
+}

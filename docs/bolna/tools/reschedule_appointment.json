@@ -1,0 +1,46 @@
+{
+  "name": "reschedule_appointment",
+  "description": "Move a booked appointment to a new live-checked slot. Re-search availability first if preferences changed. Mention fees only when cancellation_fee.applicable is true.",
+  "pre_call_message": "One moment, rescheduling that.",
+  "parameters": {
+    "type": "object",
+    "required": ["appointment_id", "caller_full_name", "start_time"],
+    "properties": {
+      "appointment_id": { "type": "string" },
+      "caller_full_name": { "type": "string" },
+      "practitioner_id": { "type": "string" },
+      "practitioner_name": { "type": "string" },
+      "branch_id": { "type": "string" },
+      "branch_name": { "type": "string" },
+      "appointment_type_id": { "type": "string" },
+      "appointment_type_name": { "type": "string" },
+      "start_time": { "type": "string" },
+      "notes": { "type": "string" },
+      "from_number": { "type": "string" },
+      "call_sid": { "type": "string" }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/reschedule_appointment",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "appointment_id": "%(appointment_id)s",
+      "caller_full_name": "%(caller_full_name)s",
+      "practitioner_id": "%(practitioner_id)s",
+      "practitioner_name": "%(practitioner_name)s",
+      "branch_id": "%(branch_id)s",
+      "branch_name": "%(branch_name)s",
+      "appointment_type_id": "%(appointment_type_id)s",
+      "appointment_type_name": "%(appointment_type_name)s",
+      "start_time": "%(start_time)s",
+      "notes": "%(notes)s",
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
+    }
+  }
+}

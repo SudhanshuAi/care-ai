@@ -1,0 +1,54 @@
+{
+  "name": "search_availability",
+  "description": "Search LIVE appointment availability from the database. NEVER invent slots. Re-run whenever the caller changes date, time, doctor, specialty, or branch. Set earliest_only=true for earliest-slot requests.",
+  "pre_call_message": "One moment, checking that now.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "appointment_type_id": { "type": "string" },
+      "appointment_type_name": { "type": "string" },
+      "branch_id": { "type": "string" },
+      "branch_name": { "type": "string" },
+      "department_id": { "type": "string" },
+      "department_name": { "type": "string" },
+      "practitioner_id": { "type": "string" },
+      "practitioner_name": { "type": "string" },
+      "appointment_date": {
+        "type": "string",
+        "description": "YYYY-MM-DD in branch timezone."
+      },
+      "start_time": { "type": "string", "description": "HH:MM:SS local lower bound." },
+      "end_time": { "type": "string", "description": "HH:MM:SS local upper bound." },
+      "earliest_only": { "type": "boolean" },
+      "limit": { "type": "integer" },
+      "from_number": { "type": "string" },
+      "call_sid": { "type": "string" }
+    }
+  },
+  "key": "custom_task",
+  "value": {
+    "method": "POST",
+    "url": "{{BACKEND_BASE_URL}}/webhooks/bolna/tools/search_availability",
+    "api_token": "Bearer {{BOLNA_API_TOKEN}}",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "param": {
+      "appointment_type_id": "%(appointment_type_id)s",
+      "appointment_type_name": "%(appointment_type_name)s",
+      "branch_id": "%(branch_id)s",
+      "branch_name": "%(branch_name)s",
+      "department_id": "%(department_id)s",
+      "department_name": "%(department_name)s",
+      "practitioner_id": "%(practitioner_id)s",
+      "practitioner_name": "%(practitioner_name)s",
+      "appointment_date": "%(appointment_date)s",
+      "start_time": "%(start_time)s",
+      "end_time": "%(end_time)s",
+      "earliest_only": "%(earliest_only)s",
+      "limit": "%(limit)s",
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
+    }
+  }
+}

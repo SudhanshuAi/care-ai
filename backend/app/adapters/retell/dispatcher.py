@@ -125,12 +125,22 @@ class RetellToolDispatcher:
                 for patient in by_phone.patients
                 if name.casefold() in patient.full_name.casefold()
             ]
-            return {
-                "match_count": len(narrowed),
-                "requires_disambiguation": len(narrowed) > 1,
-                "patients": [patient.model_dump(mode="json") for patient in narrowed],
-                "lookup_strategy": "phone_and_name",
-            }
+            if narrowed:
+                return {
+                    "match_count": len(narrowed),
+                    "requires_disambiguation": len(narrowed) > 1,
+                    "patients": [
+                        patient.model_dump(mode="json") for patient in narrowed
+                    ],
+                    "lookup_strategy": "phone_and_name",
+                }
+            # Inbound caller ID often won't match seed/demo phones. If the
+            # phone filter finds nobody, fall back to name so saying
+            # "Rahul Verma" still resolves the seeded patient.
+            by_name = await self._patient_service.lookup_by_name(name)
+            payload = by_name.model_dump(mode="json")
+            payload["lookup_strategy"] = "name_fallback_after_phone_miss"
+            return payload
 
         if phone:
             response = await self._patient_service.lookup_by_phone(phone)

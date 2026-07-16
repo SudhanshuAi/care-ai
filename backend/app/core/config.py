@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     retell_llm_id: str | None = None
     retell_verify_signatures: bool = True
 
+    # Bolna — used only by /webhooks/bolna/*. Set BOLNA_API_TOKEN to the
+    # same bearer value configured as `api_token` on Bolna custom tools.
+    bolna_api_token: str | None = None
+    bolna_agent_id: str | None = None
+    bolna_verify_auth: bool = True
+
     @property
     def is_production(self) -> bool:
         return self.env == "production"
