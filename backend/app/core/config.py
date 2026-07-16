@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     db_max_overflow: int = 10
     db_echo: bool = False
 
+    # PMS — the durable mock provider is the production-safe default until a
+    # real vendor integration is deliberately enabled.
+    pms_provider: str = "mock"
+    pms_retry_max_attempts: int = 5
+    pms_retry_base_seconds: int = 30
+
     # Retell — used only by the webhook adapter layer. Tool APIs remain
     # telephony-agnostic. Leave blank locally to skip signature checks;
     # production deployments must set a real key for verification.

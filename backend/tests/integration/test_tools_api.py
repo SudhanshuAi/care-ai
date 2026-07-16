@@ -5,7 +5,9 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from app.db.models import AppointmentType, Branch, Patient
+from app.db.models import Appointment, AppointmentType, Branch, Call, Patient
+from app.db.models.enums import PmsSyncStatus
+from app.db.models.mock_pms_appointment import MockPmsAppointment
 from app.db.session import session_scope
 from app.main import app
 from scripts.seed_clinic import seed
@@ -81,6 +83,80 @@ async def test_create_appointment_is_idempotent() -> None:
     assert replay.status_code == 201
     assert replay.json()["appointment_id"] == first.json()["appointment_id"]
     assert replay.json()["idempotent_replay"] is True
+    appointment_id = first.json()["appointment_id"]
+    async with session_scope() as session:
+        appointment = await session.get(Appointment, appointment_id)
+        receipt = await session.scalar(
+            select(MockPmsAppointment).where(
+                MockPmsAppointment.appointment_id == appointment_id
+            )
+        )
+    assert appointment is not None
+    assert appointment.pms_sync_status == PmsSyncStatus.SYNCED
+    assert receipt is not None
+
+
+@pytest.mark.asyncio
+async def test_retell_booking_links_appointment_to_call() -> None:
+    appointment_type_id, branch_id, patient_id = await _seed_ids()
+    target_date = (datetime.now(UTC).date() + timedelta(days=14)).isoformat()
+    call_id = f"retell-booking-{uuid4()}"
+    call = {
+        "call_id": call_id,
+        "from_number": "+91-98765-10001",
+        "language": "en-IN",
+    }
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        availability = await client.post(
+            "/webhooks/retell/tools",
+            json={
+                "name": "search_availability",
+                "args": {
+                    "appointment_type_id": appointment_type_id,
+                    "branch_id": branch_id,
+                    "appointment_date": target_date,
+                    "limit": 1,
+                },
+                "call": call,
+            },
+        )
+        assert availability.status_code == 200
+        slots = availability.json()["result"]["slots"]
+        if not slots:
+            pytest.skip("Seeded branch has no schedule on the generated date.")
+        slot = slots[0]
+        booking = await client.post(
+            "/webhooks/retell/tools",
+            json={
+                "name": "create_appointment",
+                "args": {
+                    "patient_id": patient_id,
+                    "caller_full_name": "Rahul Verma",
+                    "practitioner_id": slot["practitioner_id"],
+                    "branch_id": slot["branch_id"],
+                    "appointment_type_id": appointment_type_id,
+                    "start_time": slot["start_time"],
+                },
+                "call": call,
+            },
+        )
+
+    assert booking.status_code == 200
+    body = booking.json()
+    assert body["ok"] is True
+    appointment_id = body["result"]["appointment_id"]
+    async with session_scope() as session:
+        appointment = await session.scalar(
+            select(Appointment).where(Appointment.id == appointment_id)
+        )
+        database_call = await session.scalar(
+            select(Call).where(Call.retell_call_id == call_id)
+        )
+    assert appointment is not None
+    assert database_call is not None
+    assert appointment.created_by_call_id == database_call.id
 
 
 @pytest.mark.asyncio

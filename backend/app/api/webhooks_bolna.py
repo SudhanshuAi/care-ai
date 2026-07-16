@@ -28,6 +28,7 @@ from app.adapters.retell.dispatcher import RetellToolDispatcher
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
+from app.core.observability import PROVIDER_BOLNA, correlation_response_headers
 from app.deps import get_db
 from app.repositories.call_repository import CallRepository
 
@@ -78,9 +79,9 @@ async def invoke_bolna_tool(
         raise ValidationError("Bolna tool body must be a JSON object.")
 
     invocation = normalize_bolna_invocation(tool_name, body)
-    dispatcher = RetellToolDispatcher(db)
+    dispatcher = RetellToolDispatcher(db, provider=PROVIDER_BOLNA)
     result = await dispatcher.dispatch(invocation)
-    return JSONResponse(content=result)
+    return JSONResponse(content=result, headers=correlation_response_headers())
 
 
 @router.post(
@@ -104,9 +105,9 @@ async def invoke_bolna_tool_shared(
         )
 
     invocation = normalize_bolna_invocation(tool_name, body)
-    dispatcher = RetellToolDispatcher(db)
+    dispatcher = RetellToolDispatcher(db, provider=PROVIDER_BOLNA)
     result = await dispatcher.dispatch(invocation)
-    return JSONResponse(content=result)
+    return JSONResponse(content=result, headers=correlation_response_headers())
 
 
 @router.post(

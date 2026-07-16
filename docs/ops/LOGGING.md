@@ -58,15 +58,22 @@ HTTP access lines (`http_request`) always include `request_id`, `provider`,
 `method`, `path`, `status_code`, `status`, `latency_ms`, and
 `exception_type` when an unhandled exception escaped the handler.
 
-## Retell tool events
+## Voice tool and PMS events
 
-Every Retell custom-function invocation emits:
+Every Retell or Bolna custom-function invocation emits provider-specific events:
 
-1. `retell_tool_invoked` — `status=started`
-2. `retell_tool_completed` — `status=ok|error`, with `latency_ms`
+1. `<provider>_tool_invoked` — `status=started`
+2. `<provider>_tool_completed` — `status=ok|error`, with `latency_ms`
 
-Failures also emit `retell_tool_domain_error` or `retell_tool_argument_error`
-(with `exception_type` + `detail`) before the completion event.
+Failures also emit `<provider>_tool_domain_error` or
+`<provider>_tool_argument_error` with `exception_type` and `detail` before
+the completion event.
+
+PMS write-back emits:
+
+- `pms_sync_succeeded` — durable mock-PMS receipt created or replayed
+- `pms_sync_failed` — booking remains confirmed; retry state is recorded
+- `pms_reconciliation_complete` — retry worker summary
 
 Call lifecycle:
 

@@ -37,6 +37,7 @@ from app.schemas.tools import (
     RescheduleAppointmentRequest,
 )
 from app.services.availability_service import AvailabilityService
+from app.services.pms_sync_service import PmsSyncService
 
 logger = get_logger(__name__)
 
@@ -49,6 +50,7 @@ class AppointmentService:
         patients: PatientRepository,
         scheduling: SchedulingRepository,
         offers: AvailabilityOfferRepository | None = None,
+        pms_sync: PmsSyncService | None = None,
     ) -> None:
         self._session = session
         self._appointments = appointments
@@ -56,9 +58,14 @@ class AppointmentService:
         self._scheduling = scheduling
         self._offers = offers or AvailabilityOfferRepository(session)
         self._availability = AvailabilityService(scheduling, self._offers)
+        self._pms_sync = pms_sync or PmsSyncService()
 
     async def create(
-        self, request: CreateAppointmentRequest, idempotency_key: str
+        self,
+        request: CreateAppointmentRequest,
+        idempotency_key: str,
+        *,
+        created_by_call_id: UUID | None = None,
     ) -> AppointmentConfirmation:
         request_hash = self._request_hash(request)
         try:
@@ -104,6 +111,7 @@ class AppointmentService:
                         end_time=slot.end_time,
                         status=AppointmentStatus.BOOKED,
                         pms_sync_status=PmsSyncStatus.PENDING,
+                        created_by_call_id=created_by_call_id,
                         notes=request.notes,
                     )
                     self._appointments.add(appointment)
@@ -131,6 +139,18 @@ class AppointmentService:
                         "appointment_created", appointment_id=str(appointment.id)
                     )
             await record_booking_success(replay=bool(response.idempotent_replay))
+            if not response.idempotent_replay:
+                try:
+                    await self._pms_sync.sync_appointment(response.appointment_id)
+                except Exception as exc:
+                    # A committed booking must never fail because a downstream
+                    # PMS worker or database is unavailable. It remains pending
+                    # for reconciliation and is logged for operations.
+                    logger.exception(
+                        "pms_sync_post_commit_error",
+                        appointment_id=str(response.appointment_id),
+                        exception_type=type(exc).__name__,
+                    )
             return response
         except DomainError as exc:
             await record_booking_failure(detail=exc.detail)

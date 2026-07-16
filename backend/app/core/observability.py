@@ -165,3 +165,15 @@ def current_request_id() -> str | None:
     context = structlog.contextvars.get_contextvars()
     value = context.get("request_id")
     return str(value) if value is not None else None
+
+
+def correlation_response_headers() -> dict[str, str]:
+    """Return known voice correlation IDs as safe response headers."""
+
+    context = structlog.contextvars.get_contextvars()
+    headers: dict[str, str] = {}
+    if context.get("call_id"):
+        headers[CALL_ID_HEADER] = str(context["call_id"])
+    if context.get("conversation_id"):
+        headers[CONVERSATION_ID_HEADER] = str(context["conversation_id"])
+    return headers

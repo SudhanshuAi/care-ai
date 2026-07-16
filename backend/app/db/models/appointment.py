@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
@@ -95,6 +95,14 @@ class Appointment(UUIDPkMixin, TimestampMixin, Base):
         nullable=False,
         default=PmsSyncStatus.PENDING,
     )
+    pms_sync_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    pms_last_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    pms_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pms_last_error: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
 
     patient: Mapped[Patient] = relationship(back_populates="appointments")

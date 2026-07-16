@@ -63,8 +63,11 @@ logger = get_logger(__name__)
 
 
 class RetellToolDispatcher:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self, session: AsyncSession, *, provider: str = PROVIDER_RETELL
+    ) -> None:
         self._session = session
+        self._provider = provider
         self._patients = PatientRepository(session)
         self._scheduling = SchedulingRepository(session)
         self._appointments = AppointmentRepository(session)
@@ -103,7 +106,7 @@ class RetellToolDispatcher:
         patient_id = patient_id_from_call(conversation) or extract_patient_id(args)
         appointment_id = extract_appointment_id(args)
         bind_conversation_context(
-            provider=PROVIDER_RETELL,
+            provider=self._provider,
             tool_name=name,
             call_id=call_id,
             conversation_id=conversation_id,
@@ -116,14 +119,14 @@ class RetellToolDispatcher:
         timer = Timer()
 
         logger.info(
-            "retell_tool_invoked",
+            f"{self._provider}_tool_invoked",
             tool_name=name,
             call_id=call_id,
             conversation_id=conversation_id,
             patient_id=patient_id,
             appointment_id=appointment_id,
             language=language,
-            provider=PROVIDER_RETELL,
+            provider=self._provider,
             conversation_state=conversation_state_snapshot(conversation),
             status="started",
         )
@@ -136,7 +139,7 @@ class RetellToolDispatcher:
             elif name == "search_availability":
                 result = await self._search_availability(args)
             elif name == "create_appointment":
-                result = await self._create_appointment(args, call)
+                result = await self._create_appointment(args, call, conversation)
             elif name == "reschedule_appointment":
                 result = await self._reschedule_appointment(args, call)
             elif name == "cancel_appointment":
@@ -157,7 +160,7 @@ class RetellToolDispatcher:
             )
             appointment_id = extract_appointment_id(args, result) or appointment_id
             bind_conversation_context(
-                provider=PROVIDER_RETELL,
+                provider=self._provider,
                 tool_name=name,
                 call_id=call_id,
                 conversation_id=conversation_id,
@@ -168,14 +171,14 @@ class RetellToolDispatcher:
                 conversation_state=conversation_state_snapshot(conversation),
             )
             logger.info(
-                "retell_tool_completed",
+                f"{self._provider}_tool_completed",
                 tool_name=name,
                 call_id=call_id,
                 conversation_id=conversation_id,
                 patient_id=patient_id,
                 appointment_id=appointment_id,
                 language=language,
-                provider=PROVIDER_RETELL,
+                provider=self._provider,
                 conversation_state=conversation_state_snapshot(conversation),
                 latency_ms=latency_ms,
                 status="ok",
@@ -203,7 +206,7 @@ class RetellToolDispatcher:
                 exception_type=type(exc).__name__,
                 detail=exc.detail,
                 error_code=exc.code,
-                event="retell_tool_domain_error",
+                event=f"{self._provider}_tool_domain_error",
             )
         except (ValueError, KeyError, TypeError) as exc:
             # Retell LLMs often invent names/phones where UUIDs are required.
@@ -223,19 +226,19 @@ class RetellToolDispatcher:
                 exception_type=type(exc).__name__,
                 detail=detail,
                 error_code="validation_error",
-                event="retell_tool_argument_error",
+                event=f"{self._provider}_tool_argument_error",
             )
         except Exception as exc:
             latency_ms = timer.elapsed_ms()
             logger.exception(
-                "retell_tool_completed",
+                f"{self._provider}_tool_completed",
                 tool_name=name,
                 call_id=call_id,
                 conversation_id=conversation_id,
                 patient_id=patient_id,
                 appointment_id=appointment_id,
                 language=language,
-                provider=PROVIDER_RETELL,
+                provider=self._provider,
                 conversation_state=conversation_state_snapshot(conversation),
                 latency_ms=latency_ms,
                 status="error",
@@ -276,7 +279,7 @@ class RetellToolDispatcher:
             patient_id=patient_id,
             appointment_id=appointment_id,
             language=language,
-            provider=PROVIDER_RETELL,
+            provider=self._provider,
             conversation_state=conversation_state_snapshot(conversation),
             latency_ms=latency_ms,
             status=status,
@@ -284,14 +287,14 @@ class RetellToolDispatcher:
             detail=detail,
         )
         logger.info(
-            "retell_tool_completed",
+            f"{self._provider}_tool_completed",
             tool_name=name,
             call_id=call_id,
             conversation_id=conversation_id,
             patient_id=patient_id,
             appointment_id=appointment_id,
             language=language,
-            provider=PROVIDER_RETELL,
+            provider=self._provider,
             conversation_state=conversation_state_snapshot(conversation),
             latency_ms=latency_ms,
             status=status,
@@ -465,7 +468,10 @@ class RetellToolDispatcher:
         return response.model_dump(mode="json")
 
     async def _create_appointment(
-        self, args: dict[str, Any], call: RetellCallContext | None
+        self,
+        args: dict[str, Any],
+        call: RetellCallContext | None,
+        conversation: Call | None,
     ) -> dict[str, Any]:
         request = CreateAppointmentRequest(
             patient_id=self._require_uuid(args.get("patient_id"), "patient_id"),
@@ -477,7 +483,11 @@ class RetellToolDispatcher:
             notes=args.get("notes"),
         )
         key = self._idempotency_key("create_appointment", call, args)
-        response = await self._appointment_service.create(request, key)
+        response = await self._appointment_service.create(
+            request,
+            key,
+            created_by_call_id=conversation.id if conversation else None,
+        )
         return response.model_dump(mode="json")
 
     async def _reschedule_appointment(

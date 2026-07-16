@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any
 
-import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,10 +22,9 @@ from app.core.config import Settings, get_settings
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.core.observability import (
-    CALL_ID_HEADER,
-    CONVERSATION_ID_HEADER,
     PROVIDER_RETELL,
     bind_conversation_context,
+    correlation_response_headers,
     resolve_conversation_id,
 )
 from app.deps import get_db
@@ -53,16 +51,6 @@ async def _enforce_signature(request: Request, settings: Settings) -> bytes:
     return raw_body
 
 
-def _correlation_headers() -> dict[str, str]:
-    ctx = structlog.contextvars.get_contextvars()
-    headers: dict[str, str] = {}
-    if ctx.get("call_id"):
-        headers[CALL_ID_HEADER] = str(ctx["call_id"])
-    if ctx.get("conversation_id"):
-        headers[CONVERSATION_ID_HEADER] = str(ctx["conversation_id"])
-    return headers
-
-
 @router.post(
     "/tools",
     summary="Retell Custom Function entrypoint for all voice tools",
@@ -77,7 +65,7 @@ async def invoke_retell_tool(
     dispatcher = RetellToolDispatcher(db)
     result = await dispatcher.dispatch(payload)
     # Retell feeds this JSON body back into the LLM as the tool result.
-    return JSONResponse(content=result, headers=_correlation_headers())
+    return JSONResponse(content=result, headers=correlation_response_headers())
 
 
 @router.post(

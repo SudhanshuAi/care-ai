@@ -17,6 +17,7 @@ from app.db.models.department import Department
 from app.db.models.followup import FollowUp
 from app.db.models.idempotency_key import IdempotencyKey
 from app.db.models.metric_event import MetricEvent
+from app.db.models.mock_pms_appointment import MockPmsAppointment
 from app.db.models.patient import Patient
 from app.db.models.practitioner import Practitioner
 from app.db.models.practitioner_branch import PractitionerBranch
@@ -34,6 +35,7 @@ __all__ = [
     "FollowUp",
     "IdempotencyKey",
     "MetricEvent",
+    "MockPmsAppointment",
     "Patient",
     "Practitioner",
     "PractitionerBranch",
