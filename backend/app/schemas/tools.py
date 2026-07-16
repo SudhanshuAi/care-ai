@@ -117,6 +117,16 @@ class CreateAppointmentRequest(ApiModel):
     start_time: datetime
     notes: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("caller_full_name")
+    @classmethod
+    def strip_caller_full_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError(
+                "caller_full_name is required; anonymous bookings are not allowed."
+            )
+        return name
+
 
 class RescheduleAppointmentRequest(ApiModel):
     model_config = ConfigDict(
@@ -139,6 +149,16 @@ class RescheduleAppointmentRequest(ApiModel):
     start_time: datetime
     notes: str | None = Field(default=None, max_length=2000)
 
+    @field_validator("caller_full_name")
+    @classmethod
+    def strip_caller_full_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError(
+                "caller_full_name is required; anonymous bookings are not allowed."
+            )
+        return name
+
 
 class CancelAppointmentRequest(ApiModel):
     model_config = ConfigDict(
@@ -148,6 +168,16 @@ class CancelAppointmentRequest(ApiModel):
     )
     caller_full_name: str = Field(min_length=1, examples=["Rahul Verma"])
     reason: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("caller_full_name")
+    @classmethod
+    def strip_caller_full_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError(
+                "caller_full_name is required; anonymous bookings are not allowed."
+            )
+        return name
 
 
 class FeeResult(ApiModel):
@@ -197,3 +227,13 @@ class FollowUpResponse(ApiModel):
     status: str
     category: str
     created_at: datetime
+    callback_expectation: str = Field(
+        default=(
+            "A human team member will call the patient back. "
+            "Do not imply an immediate live transfer."
+        ),
+        description=(
+            "Authoritative callback wording for the voice agent. "
+            "Never overrides this with an immediate-transfer promise."
+        ),
+    )

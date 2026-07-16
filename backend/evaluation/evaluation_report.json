@@ -1,0 +1,657 @@
+{
+  "cases": [
+    {
+      "case_id": "shared_phone",
+      "failure": null,
+      "scenario": "shared_phone",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 16.53,
+          "name": "shared_phone_lookup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "single_patient",
+      "failure": null,
+      "scenario": "single_patient",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 7.16,
+          "name": "single_patient_lookup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "earliest_slot",
+      "failure": null,
+      "scenario": "earliest_slot",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 89.12,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 54.78,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "exact_time_booking",
+      "failure": null,
+      "scenario": "exact_time_booking",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 25.48,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 6.05,
+          "name": "lookup_patient",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 19.55,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        },
+        {
+          "booking_operation": true,
+          "detail": null,
+          "latency_ms": 51.79,
+          "name": "create_appointment",
+          "retry": false,
+          "status_code": 201,
+          "success": true,
+          "tool": "create_appointment"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "cancel",
+      "failure": null,
+      "scenario": "cancel",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 28.15,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 6.56,
+          "name": "lookup_patient",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 16.11,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        },
+        {
+          "booking_operation": true,
+          "detail": null,
+          "latency_ms": 24.63,
+          "name": "create_appointment",
+          "retry": false,
+          "status_code": 201,
+          "success": true,
+          "tool": "create_appointment"
+        },
+        {
+          "booking_operation": true,
+          "detail": null,
+          "latency_ms": 26.42,
+          "name": "cancel_appointment",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "cancel_appointment"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "reschedule",
+      "failure": null,
+      "scenario": "reschedule",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 27.0,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 5.67,
+          "name": "lookup_patient",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 14.67,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        },
+        {
+          "booking_operation": true,
+          "detail": null,
+          "latency_ms": 25.74,
+          "name": "create_appointment",
+          "retry": false,
+          "status_code": 201,
+          "success": true,
+          "tool": "create_appointment"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 15.06,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        },
+        {
+          "booking_operation": true,
+          "detail": null,
+          "latency_ms": 30.6,
+          "name": "reschedule_appointment",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "reschedule_appointment"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "hindi",
+      "failure": null,
+      "scenario": "language_lookup",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 21.84,
+          "name": "voice_language_lookup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 6.2,
+          "name": "voice_language_context",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "english",
+      "failure": null,
+      "scenario": "language_lookup",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 70.9,
+          "name": "voice_language_lookup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 4.38,
+          "name": "voice_language_context",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "code_switching",
+      "failure": null,
+      "scenario": "language_lookup",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 21.26,
+          "name": "voice_language_lookup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 5.19,
+          "name": "voice_language_context",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "human_callback",
+      "failure": null,
+      "scenario": "followup",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 5.45,
+          "name": "lookup_patient",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 39.94,
+          "name": "create_followup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "create_followup"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "clinical_concern",
+      "failure": null,
+      "scenario": "followup",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 5.47,
+          "name": "lookup_patient",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 23.73,
+          "name": "create_followup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "create_followup"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "double_booking",
+      "failure": null,
+      "scenario": "double_booking",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 26.31,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 4.99,
+          "name": "lookup_patient",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 14.14,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        },
+        {
+          "booking_operation": true,
+          "detail": "[201, 422]",
+          "latency_ms": 0,
+          "name": "concurrent_double_booking",
+          "retry": false,
+          "status_code": null,
+          "success": true,
+          "tool": "create_appointment"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "idempotency_replay",
+      "failure": null,
+      "scenario": "idempotency_replay",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 32.95,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 5.77,
+          "name": "lookup_patient",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 14.62,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        },
+        {
+          "booking_operation": true,
+          "detail": null,
+          "latency_ms": 33.64,
+          "name": "create_appointment",
+          "retry": false,
+          "status_code": 201,
+          "success": true,
+          "tool": "create_appointment"
+        },
+        {
+          "booking_operation": true,
+          "detail": null,
+          "latency_ms": 6.13,
+          "name": "idempotency_replay",
+          "retry": true,
+          "status_code": 201,
+          "success": true,
+          "tool": "create_appointment"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "doctor_unavailable",
+      "failure": null,
+      "scenario": "doctor_unavailable",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 42.16,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 10.16,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "branch_unavailable",
+      "failure": null,
+      "scenario": "branch_unavailable",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 31.44,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 6.66,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "outside_schedule",
+      "failure": null,
+      "scenario": "outside_schedule",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 25.37,
+          "name": "get_clinic_catalog",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "get_clinic_catalog"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 12.96,
+          "name": "search_availability",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "search_availability"
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "dropped_call",
+      "failure": null,
+      "scenario": "dropped_call",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 25.56,
+          "name": "call_ended_disconnected",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": null
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 4.61,
+          "name": "dropped_call_context",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "case_id": "resume_conversation",
+      "failure": null,
+      "scenario": "resume_conversation",
+      "steps": [
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 27.75,
+          "name": "disconnect_original",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": null
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 21.16,
+          "name": "resume_lookup",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": "lookup_patient"
+        },
+        {
+          "booking_operation": false,
+          "detail": null,
+          "latency_ms": 6.29,
+          "name": "resumed_context",
+          "retry": false,
+          "status_code": 200,
+          "success": true,
+          "tool": null
+        }
+      ],
+      "success": true
+    }
+  ],
+  "failures": [],
+  "metric_notes": {
+    "average_response_latency_ms": "ASGI request round-trip time; this is backend response latency, not spoken end-to-end response latency.",
+    "average_retries": "Explicit replay attempts made by the harness per evaluated case.",
+    "average_ttft_ms": "not_collected: this harness does not invoke an LLM/TTS streaming runtime or provider call analytics."
+  },
+  "summary": {
+    "average_booking_latency_ms": 24.87,
+    "average_response_latency_ms": 21.39,
+    "average_retries": 0.06,
+    "average_tool_latency_ms": 23.05,
+    "average_ttft_ms": null,
+    "booking_accuracy": 1.0,
+    "conversation_success_rate": 1.0,
+    "failed_cases": 0,
+    "passed_cases": 18,
+    "tool_accuracy": 1.0,
+    "total_cases": 18
+  }
+}

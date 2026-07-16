@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "shared_phone", "scenario": "shared_phone", "language": "en-IN"},
+    {"id": "single_patient", "scenario": "single_patient", "language": "en-IN"},
+    {"id": "earliest_slot", "scenario": "earliest_slot", "language": "en-IN"},
+    {"id": "exact_time_booking", "scenario": "exact_time_booking", "language": "en-IN"},
+    {"id": "cancel", "scenario": "cancel", "language": "en-IN"},
+    {"id": "reschedule", "scenario": "reschedule", "language": "en-IN"},
+    {"id": "hindi", "scenario": "language_lookup", "language": "hi-IN", "utterance": "मुझे अपॉइंटमेंट बुक करनी है।"},
+    {"id": "english", "scenario": "language_lookup", "language": "en-IN", "utterance": "I need to book an appointment."},
+    {"id": "code_switching", "scenario": "language_lookup", "language": "hi-en", "utterance": "Mujhe next week appointment book karni hai."},
+    {"id": "human_callback", "scenario": "followup", "category": "human_requested"},
+    {"id": "clinical_concern", "scenario": "followup", "category": "clinical_concern"},
+    {"id": "double_booking", "scenario": "double_booking"},
+    {"id": "idempotency_replay", "scenario": "idempotency_replay"},
+    {"id": "doctor_unavailable", "scenario": "doctor_unavailable"},
+    {"id": "branch_unavailable", "scenario": "branch_unavailable"},
+    {"id": "outside_schedule", "scenario": "outside_schedule"},
+    {"id": "dropped_call", "scenario": "dropped_call", "language": "en-IN"},
+    {"id": "resume_conversation", "scenario": "resume_conversation", "language": "en-IN"}
+  ]
+}

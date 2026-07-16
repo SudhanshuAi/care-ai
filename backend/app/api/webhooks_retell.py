@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any
 
+import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +22,13 @@ from app.adapters.retell.security import verify_retell_signature
 from app.core.config import Settings, get_settings
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
+from app.core.observability import (
+    CALL_ID_HEADER,
+    CONVERSATION_ID_HEADER,
+    PROVIDER_RETELL,
+    bind_conversation_context,
+    resolve_conversation_id,
+)
 from app.deps import get_db
 from app.repositories.call_repository import CallRepository
 from app.schemas.conversation import ConversationStateResponse
@@ -45,6 +53,16 @@ async def _enforce_signature(request: Request, settings: Settings) -> bytes:
     return raw_body
 
 
+def _correlation_headers() -> dict[str, str]:
+    ctx = structlog.contextvars.get_contextvars()
+    headers: dict[str, str] = {}
+    if ctx.get("call_id"):
+        headers[CALL_ID_HEADER] = str(ctx["call_id"])
+    if ctx.get("conversation_id"):
+        headers[CONVERSATION_ID_HEADER] = str(ctx["conversation_id"])
+    return headers
+
+
 @router.post(
     "/tools",
     summary="Retell Custom Function entrypoint for all voice tools",
@@ -59,7 +77,7 @@ async def invoke_retell_tool(
     dispatcher = RetellToolDispatcher(db)
     result = await dispatcher.dispatch(payload)
     # Retell feeds this JSON body back into the LLM as the tool result.
-    return JSONResponse(content=result)
+    return JSONResponse(content=result, headers=_correlation_headers())
 
 
 @router.post(
@@ -83,14 +101,40 @@ async def retell_call_ended(
         retell_call_id = call_obj.get("call_id")
 
     if not retell_call_id:
-        logger.info("retell_call_ended_ignored", reason="missing_call_id")
+        logger.info(
+            "retell_call_ended_ignored",
+            reason="missing_call_id",
+            provider=PROVIDER_RETELL,
+            status="ignored",
+        )
         return {"ok": True, "updated": False}
 
     state_service = ConversationStateService(db, CallRepository(db))
+    calls = CallRepository(db)
     # A call that never reached a function still has a terminal Retell
     # webhook. Create its memory row here so every Retell call is
     # durable, not only calls that invoked a scheduling tool.
-    await state_service.restore_or_create(RetellCallContext.model_validate(call_obj))
+    conversation = await state_service.restore_or_create(
+        RetellCallContext.model_validate(call_obj)
+    )
+    conversation_id = await resolve_conversation_id(
+        call=conversation, lookup=calls.by_id
+    )
+    # Lookups during correlation may autobegin; clear before complete().
+    if db.in_transaction():
+        await db.commit()
+    bind_conversation_context(
+        provider=PROVIDER_RETELL,
+        call_id=str(retell_call_id),
+        conversation_id=conversation_id,
+        database_call_id=str(conversation.id) if conversation else None,
+        language=(
+            conversation.language
+            if conversation and conversation.language
+            else (call_obj.get("language") if isinstance(call_obj, dict) else None)
+        ),
+        conversation_state=None,
+    )
 
     status_value = str(
         call_obj.get("call_status")
@@ -104,6 +148,14 @@ async def retell_call_ended(
     )
     state = await state_service.complete(
         retell_call_id=str(retell_call_id), disconnected=disconnected
+    )
+    logger.info(
+        "retell_call_ended",
+        call_id=str(retell_call_id),
+        conversation_id=conversation_id,
+        provider=PROVIDER_RETELL,
+        status="disconnected" if disconnected else "completed",
+        updated=state is not None,
     )
     return {
         "ok": True,

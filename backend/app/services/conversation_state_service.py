@@ -15,6 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.retell.schemas import RetellCallContext
 from app.core.exceptions import NotFoundError
+from app.core.metrics import (
+    record_call_duration,
+    record_interruption,
+    record_language,
+)
 from app.db.models.call import Call
 from app.db.models.enums import CallDirection
 from app.repositories.call_repository import CallRepository
@@ -68,6 +73,11 @@ class ConversationStateService:
                 self._copy_resumable_state(source, call)
             self._apply_context_language(call, context)
             await self._session.flush()
+        if context.language:
+            await record_language(
+                language=context.language.strip(),
+                call_id=context.call_id,
+            )
         return call
 
     async def record_tool_result(
@@ -175,7 +185,21 @@ class ConversationStateService:
                 if call.resumed_from_call_id
                 else None
             )
-            return self._to_response(call, parent)
+            response = self._to_response(call, parent)
+
+        started = call.started_at or call.created_at
+        ended = call.ended_at or datetime.now(UTC)
+        if started is not None:
+            duration_ms = max((ended - started).total_seconds() * 1000.0, 0.0)
+            await record_call_duration(
+                duration_ms=round(duration_ms, 2),
+                status="disconnected" if disconnected else "completed",
+                call_id=retell_call_id,
+                language=call.language,
+            )
+        if disconnected:
+            await record_interruption(call_id=retell_call_id)
+        return response
 
     @staticmethod
     def _copy_resumable_state(source: Call, target: Call) -> None:

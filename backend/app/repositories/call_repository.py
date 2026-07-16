@@ -59,6 +59,7 @@ class CallRepository:
             direction=direction,
             status=CallStatus.IN_PROGRESS,
             resumed_from_call_id=resumed_from_call_id,
+            started_at=datetime.now(UTC),
         )
         self._session.add(call)
         await self._session.flush()
@@ -69,6 +70,9 @@ class CallRepository:
         if call is None:
             return None
         call.status = CallStatus.COMPLETED
+        call.ended_at = datetime.now(UTC)
+        if call.started_at is None:
+            call.started_at = call.created_at
         await self._session.flush()
         return call
 
@@ -76,8 +80,12 @@ class CallRepository:
         call = await self.by_retell_call_id(retell_call_id)
         if call is None:
             return None
+        now = datetime.now(UTC)
         call.status = CallStatus.DISCONNECTED
-        call.disconnected_at = datetime.now(UTC)
+        call.disconnected_at = now
+        call.ended_at = now
+        if call.started_at is None:
+            call.started_at = call.created_at
         await self._session.flush()
         return call
 

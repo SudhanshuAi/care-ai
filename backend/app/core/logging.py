@@ -3,8 +3,10 @@
 Uses `structlog` layered on top of the stdlib `logging` module so that:
   * every log line (ours and third-party, e.g. uvicorn) is a single
     structured event,
-  * output is human-readable in local/dev and JSON in staging/production,
-  * we have one place to add context (request id, call id, etc.) later.
+  * output is human-readable in local/dev and JSON when `JSON_LOGS=true`,
+  * request and conversation context (`request_id`, `call_id`,
+    `conversation_id`, `patient_id`, …) merge automatically via
+    contextvars — see `app.core.observability` and `docs/ops/LOGGING.md`.
 """
 
 import logging
@@ -18,6 +20,9 @@ def configure_logging(log_level: str = "INFO", json_logs: bool = False) -> None:
 
     Call this once, as early as possible (before the FastAPI app is
     created), so that any import-time logging is also captured correctly.
+
+    Production deployments should set ``JSON_LOGS=true`` so log aggregators
+    receive one JSON object per line.
     """
 
     shared_processors: list[structlog.types.Processor] = [

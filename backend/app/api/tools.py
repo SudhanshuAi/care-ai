@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.appointment_repository import AppointmentRepository
+from app.repositories.availability_offer_repository import AvailabilityOfferRepository
 from app.repositories.followup_repository import FollowUpRepository
 from app.repositories.patient_repository import PatientRepository
 from app.repositories.scheduling_repository import SchedulingRepository
@@ -49,15 +50,20 @@ def patient_service(db: DbSession) -> PatientService:
 
 
 def availability_service(db: DbSession) -> AvailabilityService:
-    return AvailabilityService(SchedulingRepository(db))
+    return AvailabilityService(
+        SchedulingRepository(db),
+        AvailabilityOfferRepository(db),
+    )
 
 
 def appointment_service(db: DbSession) -> AppointmentService:
+    offers = AvailabilityOfferRepository(db)
     return AppointmentService(
         db,
         AppointmentRepository(db),
         PatientRepository(db),
         SchedulingRepository(db),
+        offers,
     )
 
 

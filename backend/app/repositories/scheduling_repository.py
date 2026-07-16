@@ -90,6 +90,9 @@ class SchedulingRepository:
             statement = statement.where(Appointment.id != exclude_appointment_id)
         return list((await self._session.scalars(statement)).all())
 
+    async def practitioner(self, practitioner_id: UUID) -> Practitioner | None:
+        return await self._session.get(Practitioner, practitioner_id)
+
     async def practitioner_at_branch(
         self, practitioner_id: UUID, branch_id: UUID
     ) -> Practitioner | None:

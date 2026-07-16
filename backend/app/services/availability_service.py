@@ -1,9 +1,11 @@
 """Live availability calculation.
 
-There is intentionally no cache in this service. Every request loads
-the schedules and booked appointments from the caller's `AsyncSession`,
+There is intentionally no durable cache of "what is free right now"
+beyond short-lived `AvailabilityOffer` rows. Every search loads
+schedules and booked appointments from the caller's `AsyncSession`,
 which is the source of truth when a caller changes their requested
-time mid-conversation.
+time mid-conversation. Offers exist only so booking can prove a prior
+live search happened and is still fresh.
 """
 
 from datetime import UTC, date, datetime, timedelta
@@ -11,6 +13,9 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from app.core.exceptions import NotFoundError, ValidationError
+from app.core.guardrails import AVAILABILITY_OFFER_TTL
+from app.db.models.availability_offer import AvailabilityOffer
+from app.repositories.availability_offer_repository import AvailabilityOfferRepository
 from app.repositories.scheduling_repository import SchedulingRepository
 from app.schemas.tools import (
     AvailabilitySearchRequest,
@@ -22,11 +27,20 @@ SLOT_GRANULARITY = timedelta(minutes=5)
 
 
 class AvailabilityService:
-    def __init__(self, repository: SchedulingRepository) -> None:
+    def __init__(
+        self,
+        repository: SchedulingRepository,
+        offers: AvailabilityOfferRepository | None = None,
+    ) -> None:
         self._repository = repository
+        self._offers = offers
 
     async def search(
-        self, request: AvailabilitySearchRequest, *, exclude_appointment_id: UUID | None = None
+        self,
+        request: AvailabilitySearchRequest,
+        *,
+        exclude_appointment_id: UUID | None = None,
+        record_offers: bool = True,
     ) -> AvailabilitySearchResponse:
         appointment_type = await self._repository.appointment_type(request.appointment_type_id)
         if appointment_type is None:
@@ -34,6 +48,16 @@ class AvailabilityService:
 
         if request.department_id is not None and request.department_id != appointment_type.department_id:
             raise ValidationError("The appointment type does not belong to the requested department.")
+
+        if request.branch_id is not None:
+            branch = await self._repository.branch(request.branch_id)
+            if branch is None:
+                raise NotFoundError("Branch was not found.")
+
+        if request.practitioner_id is not None:
+            practitioner = await self._repository.practitioner(request.practitioner_id)
+            if practitioner is None:
+                raise NotFoundError("Practitioner was not found.")
 
         if request.start_time and request.end_time and request.start_time >= request.end_time:
             raise ValidationError("start_time must be before end_time.")
@@ -106,7 +130,10 @@ class AvailabilityService:
 
         slots.sort(key=lambda slot: (slot.start_time, slot.branch_name, slot.practitioner_name))
         result = slots[:1] if request.earliest_only else slots[: request.limit]
-        return AvailabilitySearchResponse(slots=result, queried_at=datetime.now(UTC))
+        queried_at = datetime.now(UTC)
+        if record_offers and self._offers is not None:
+            await self._persist_offers(result, queried_at)
+        return AvailabilitySearchResponse(slots=result, queried_at=queried_at)
 
     async def is_slot_currently_available(
         self,
@@ -127,6 +154,9 @@ class AvailabilityService:
         appointment_type = await self._repository.appointment_type(appointment_type_id)
         if appointment_type is None:
             raise NotFoundError("Appointment type was not found.")
+        practitioner = await self._repository.practitioner(practitioner_id)
+        if practitioner is None:
+            raise NotFoundError("Practitioner was not found.")
         local_start = start_time.astimezone(ZoneInfo(branch.timezone))
         response = await self.search(
             AvailabilitySearchRequest(
@@ -145,11 +175,31 @@ class AvailabilityService:
                 limit=1,
             ),
             exclude_appointment_id=exclude_appointment_id,
+            record_offers=False,
         )
         for slot in response.slots:
             if slot.start_time == start_time.astimezone(UTC):
                 return slot
         raise ValidationError("The requested slot is no longer available.")
+
+    async def _persist_offers(
+        self, slots: list[AvailabilitySlot], searched_at: datetime
+    ) -> None:
+        assert self._offers is not None
+        expires_at = searched_at + AVAILABILITY_OFFER_TTL
+        offers = [
+            AvailabilityOffer(
+                practitioner_id=slot.practitioner_id,
+                branch_id=slot.branch_id,
+                appointment_type_id=slot.appointment_type_id,
+                start_time=slot.start_time,
+                end_time=slot.end_time,
+                searched_at=searched_at,
+                expires_at=expires_at,
+            )
+            for slot in slots
+        ]
+        await self._offers.persist_new(offers)
 
     async def _today_for_request(self, request: AvailabilitySearchRequest) -> date:
         if request.branch_id is None:

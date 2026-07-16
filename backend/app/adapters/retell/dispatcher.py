@@ -21,14 +21,27 @@ from sqlalchemy.orm import selectinload
 from app.adapters.retell.schemas import RetellCallContext, RetellToolInvocation
 from app.core.exceptions import DomainError, NotFoundError, ValidationError
 from app.core.logging import get_logger
+from app.core.metrics import Timer, record_tool_latency
+from app.core.observability import (
+    PROVIDER_RETELL,
+    bind_conversation_context,
+    conversation_state_snapshot,
+    current_request_id,
+    extract_appointment_id,
+    extract_patient_id,
+    patient_id_from_call,
+    resolve_conversation_id,
+)
 from app.db.models import (
     AppointmentType,
     Branch,
     Department,
     Practitioner,
 )
+from app.db.models.call import Call
 from app.db.models.enums import CallDirection, FollowUpCategory
 from app.repositories.appointment_repository import AppointmentRepository
+from app.repositories.availability_offer_repository import AvailabilityOfferRepository
 from app.repositories.call_repository import CallRepository
 from app.repositories.followup_repository import FollowUpRepository
 from app.repositories.patient_repository import PatientRepository
@@ -59,10 +72,17 @@ class RetellToolDispatcher:
         self._calls = CallRepository(session)
         self._conversation_state = ConversationStateService(session, self._calls)
 
+        self._offers = AvailabilityOfferRepository(session)
         self._patient_service = PatientService(self._patients)
-        self._availability_service = AvailabilityService(self._scheduling)
+        self._availability_service = AvailabilityService(
+            self._scheduling, self._offers
+        )
         self._appointment_service = AppointmentService(
-            session, self._appointments, self._patients, self._scheduling
+            session,
+            self._appointments,
+            self._patients,
+            self._scheduling,
+            self._offers,
         )
         self._followup_service = FollowUpService(session, self._followups)
 
@@ -71,11 +91,41 @@ class RetellToolDispatcher:
         args = dict(invocation.args or {})
         call = invocation.call
         conversation = await self._conversation_state.restore_or_create(call)
+        call_id = call.call_id if call else None
+        language = self._resolve_language(call, conversation)
+        conversation_id = await resolve_conversation_id(
+            call=conversation,
+            lookup=self._calls.by_id,
+        )
+        # Correlation lookups may autobegin the shared request session.
+        if isinstance(self._session, AsyncSession) and self._session.in_transaction():
+            await self._session.commit()
+        patient_id = patient_id_from_call(conversation) or extract_patient_id(args)
+        appointment_id = extract_appointment_id(args)
+        bind_conversation_context(
+            provider=PROVIDER_RETELL,
+            tool_name=name,
+            call_id=call_id,
+            conversation_id=conversation_id,
+            database_call_id=str(conversation.id) if conversation else None,
+            patient_id=patient_id,
+            appointment_id=appointment_id,
+            language=language,
+            conversation_state=conversation_state_snapshot(conversation),
+        )
+        timer = Timer()
 
         logger.info(
             "retell_tool_invoked",
-            tool=name,
-            retell_call_id=(call.call_id if call else None),
+            tool_name=name,
+            call_id=call_id,
+            conversation_id=conversation_id,
+            patient_id=patient_id,
+            appointment_id=appointment_id,
+            language=language,
+            provider=PROVIDER_RETELL,
+            conversation_state=conversation_state_snapshot(conversation),
+            status="started",
         )
 
         try:
@@ -101,25 +151,175 @@ class RetellToolDispatcher:
                 args=args,
                 result=result,
             )
+            latency_ms = timer.elapsed_ms()
+            patient_id = extract_patient_id(
+                args, result, fallback=patient_id_from_call(conversation) or patient_id
+            )
+            appointment_id = extract_appointment_id(args, result) or appointment_id
+            bind_conversation_context(
+                provider=PROVIDER_RETELL,
+                tool_name=name,
+                call_id=call_id,
+                conversation_id=conversation_id,
+                database_call_id=str(conversation.id) if conversation else None,
+                patient_id=patient_id,
+                appointment_id=appointment_id,
+                language=language,
+                conversation_state=conversation_state_snapshot(conversation),
+            )
+            logger.info(
+                "retell_tool_completed",
+                tool_name=name,
+                call_id=call_id,
+                conversation_id=conversation_id,
+                patient_id=patient_id,
+                appointment_id=appointment_id,
+                language=language,
+                provider=PROVIDER_RETELL,
+                conversation_state=conversation_state_snapshot(conversation),
+                latency_ms=latency_ms,
+                status="ok",
+                exception_type=None,
+            )
+            await record_tool_latency(
+                tool=name,
+                ok=True,
+                duration_ms=latency_ms,
+                call_id=call_id,
+                request_id=current_request_id(),
+            )
             return {"ok": True, "tool": name, "result": result}
         except DomainError as exc:
-            logger.warning("retell_tool_domain_error", tool=name, detail=exc.detail)
-            return {
-                "ok": False,
-                "tool": name,
-                "error": {"code": exc.code, "detail": exc.detail},
-            }
+            return await self._tool_failure(
+                name=name,
+                call_id=call_id,
+                conversation_id=conversation_id,
+                conversation=conversation,
+                patient_id=patient_id,
+                appointment_id=appointment_id,
+                language=language,
+                timer=timer,
+                status="error",
+                exception_type=type(exc).__name__,
+                detail=exc.detail,
+                error_code=exc.code,
+                event="retell_tool_domain_error",
+            )
         except (ValueError, KeyError, TypeError) as exc:
             # Retell LLMs often invent names/phones where UUIDs are required.
             # Surface those as tool errors (HTTP 200) so the agent can recover
             # instead of a bare 500 from the webhook.
             detail = str(exc) or "Invalid tool arguments."
-            logger.warning("retell_tool_argument_error", tool=name, detail=detail)
-            return {
-                "ok": False,
-                "tool": name,
-                "error": {"code": "validation_error", "detail": detail},
-            }
+            return await self._tool_failure(
+                name=name,
+                call_id=call_id,
+                conversation_id=conversation_id,
+                conversation=conversation,
+                patient_id=patient_id,
+                appointment_id=appointment_id,
+                language=language,
+                timer=timer,
+                status="error",
+                exception_type=type(exc).__name__,
+                detail=detail,
+                error_code="validation_error",
+                event="retell_tool_argument_error",
+            )
+        except Exception as exc:
+            latency_ms = timer.elapsed_ms()
+            logger.exception(
+                "retell_tool_completed",
+                tool_name=name,
+                call_id=call_id,
+                conversation_id=conversation_id,
+                patient_id=patient_id,
+                appointment_id=appointment_id,
+                language=language,
+                provider=PROVIDER_RETELL,
+                conversation_state=conversation_state_snapshot(conversation),
+                latency_ms=latency_ms,
+                status="error",
+                exception_type=type(exc).__name__,
+            )
+            await record_tool_latency(
+                tool=name,
+                ok=False,
+                duration_ms=latency_ms,
+                call_id=call_id,
+                request_id=current_request_id(),
+            )
+            raise
+
+    async def _tool_failure(
+        self,
+        *,
+        name: str,
+        call_id: str | None,
+        conversation_id: str | None,
+        conversation: Call | None,
+        patient_id: str | None,
+        appointment_id: str | None,
+        language: str | None,
+        timer: Timer,
+        status: str,
+        exception_type: str,
+        detail: str,
+        error_code: str,
+        event: str,
+    ) -> dict[str, Any]:
+        latency_ms = timer.elapsed_ms()
+        logger.warning(
+            event,
+            tool_name=name,
+            call_id=call_id,
+            conversation_id=conversation_id,
+            patient_id=patient_id,
+            appointment_id=appointment_id,
+            language=language,
+            provider=PROVIDER_RETELL,
+            conversation_state=conversation_state_snapshot(conversation),
+            latency_ms=latency_ms,
+            status=status,
+            exception_type=exception_type,
+            detail=detail,
+        )
+        logger.info(
+            "retell_tool_completed",
+            tool_name=name,
+            call_id=call_id,
+            conversation_id=conversation_id,
+            patient_id=patient_id,
+            appointment_id=appointment_id,
+            language=language,
+            provider=PROVIDER_RETELL,
+            conversation_state=conversation_state_snapshot(conversation),
+            latency_ms=latency_ms,
+            status=status,
+            exception_type=exception_type,
+            detail=detail,
+        )
+        await record_tool_latency(
+            tool=name,
+            ok=False,
+            duration_ms=latency_ms,
+            call_id=call_id,
+            request_id=current_request_id(),
+        )
+        return {
+            "ok": False,
+            "tool": name,
+            "error": {"code": error_code, "detail": detail},
+        }
+
+    @staticmethod
+    def _resolve_language(
+        call: RetellCallContext | None, conversation: Call | None
+    ) -> str | None:
+        if conversation is not None and conversation.language:
+            return conversation.language
+        if call is not None and call.language:
+            return str(call.language).strip() or None
+        return None
 
     async def _lookup_patient(
         self, args: dict[str, Any], call: RetellCallContext | None
@@ -352,12 +552,7 @@ class RetellToolDispatcher:
             notes=str(args["notes"]).strip(),
         )
         response = await self._followup_service.create(request)
-        payload = response.model_dump(mode="json")
-        payload["callback_expectation"] = (
-            "A human team member will call the patient back. "
-            "Do not imply an immediate live transfer."
-        )
-        return payload
+        return response.model_dump(mode="json")
 
     async def _resolve_appointment_type_id(self, args: dict[str, Any]) -> UUID:
         if args.get("appointment_type_id"):
