@@ -522,9 +522,12 @@ class RetellToolDispatcher:
             notes=args.get("notes"),
         )
         key = self._idempotency_key("reschedule_appointment", call, args)
-        response = await self._appointment_service.reschedule(
-            appointment_id, request, key
-        )
+        try:
+            response = await self._appointment_service.reschedule(
+                appointment_id, request, key
+            )
+        except NotFoundError as exc:
+            raise self._enrich_appointment_not_found(exc) from exc
         return response.model_dump(mode="json")
 
     async def _cancel_appointment(
@@ -536,9 +539,12 @@ class RetellToolDispatcher:
             reason=args.get("reason"),
         )
         key = self._idempotency_key("cancel_appointment", call, args)
-        response = await self._appointment_service.cancel(
-            appointment_id, request, key
-        )
+        try:
+            response = await self._appointment_service.cancel(
+                appointment_id, request, key
+            )
+        except NotFoundError as exc:
+            raise self._enrich_appointment_not_found(exc) from exc
         return response.model_dump(mode="json")
 
     async def _create_followup(
@@ -664,6 +670,22 @@ class RetellToolDispatcher:
         if args.get(id_key) or args.get(name_key):
             return await resolver(args)
         return None
+
+    @staticmethod
+    def _enrich_appointment_not_found(exc: NotFoundError) -> NotFoundError:
+        """Give the voice agent an actionable next step, not just a 404.
+
+        Only appends guidance when the miss is specifically about the
+        appointment itself (not e.g. a patient) so this stays accurate.
+        """
+
+        if exc.detail.strip().lower() != "appointment was not found.":
+            return exc
+        return NotFoundError(
+            exc.detail + " Call list_appointments with the patient_id to "
+            "find the correct appointment_id, then try again — do not "
+            "reuse the patient_id or another UUID as appointment_id."
+        )
 
     @staticmethod
     def _require_appointment_id(value: Any) -> UUID:
