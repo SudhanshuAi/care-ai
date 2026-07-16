@@ -105,6 +105,11 @@ class RetellToolDispatcher:
             await self._session.commit()
         patient_id = patient_id_from_call(conversation) or extract_patient_id(args)
         appointment_id = extract_appointment_id(args)
+        # Captured once while definitely fresh. Reused for failure-path
+        # logging below instead of re-reading the ORM object, since a
+        # rollback triggered by the failure itself can expire its
+        # attributes (see conversation_state_snapshot's docstring).
+        initial_conversation_state = conversation_state_snapshot(conversation)
         bind_conversation_context(
             provider=self._provider,
             tool_name=name,
@@ -114,7 +119,7 @@ class RetellToolDispatcher:
             patient_id=patient_id,
             appointment_id=appointment_id,
             language=language,
-            conversation_state=conversation_state_snapshot(conversation),
+            conversation_state=initial_conversation_state,
         )
         timer = Timer()
 
@@ -127,7 +132,7 @@ class RetellToolDispatcher:
             appointment_id=appointment_id,
             language=language,
             provider=self._provider,
-            conversation_state=conversation_state_snapshot(conversation),
+            conversation_state=initial_conversation_state,
             status="started",
         )
 
@@ -199,7 +204,7 @@ class RetellToolDispatcher:
                 name=name,
                 call_id=call_id,
                 conversation_id=conversation_id,
-                conversation=conversation,
+                conversation_state=initial_conversation_state,
                 patient_id=patient_id,
                 appointment_id=appointment_id,
                 language=language,
@@ -219,7 +224,7 @@ class RetellToolDispatcher:
                 name=name,
                 call_id=call_id,
                 conversation_id=conversation_id,
-                conversation=conversation,
+                conversation_state=initial_conversation_state,
                 patient_id=patient_id,
                 appointment_id=appointment_id,
                 language=language,
@@ -241,7 +246,7 @@ class RetellToolDispatcher:
                 appointment_id=appointment_id,
                 language=language,
                 provider=self._provider,
-                conversation_state=conversation_state_snapshot(conversation),
+                conversation_state=initial_conversation_state,
                 latency_ms=latency_ms,
                 status="error",
                 exception_type=type(exc).__name__,
@@ -261,7 +266,7 @@ class RetellToolDispatcher:
         name: str,
         call_id: str | None,
         conversation_id: str | None,
-        conversation: Call | None,
+        conversation_state: dict[str, Any] | None,
         patient_id: str | None,
         appointment_id: str | None,
         language: str | None,
@@ -282,7 +287,7 @@ class RetellToolDispatcher:
             appointment_id=appointment_id,
             language=language,
             provider=self._provider,
-            conversation_state=conversation_state_snapshot(conversation),
+            conversation_state=conversation_state,
             latency_ms=latency_ms,
             status=status,
             exception_type=exception_type,
@@ -297,7 +302,7 @@ class RetellToolDispatcher:
             appointment_id=appointment_id,
             language=language,
             provider=self._provider,
-            conversation_state=conversation_state_snapshot(conversation),
+            conversation_state=conversation_state,
             latency_ms=latency_ms,
             status=status,
             exception_type=exception_type,

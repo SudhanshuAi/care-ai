@@ -37,17 +37,30 @@ def bind_request_provider(path: str) -> str:
 
 
 def conversation_state_snapshot(call: Call | None) -> dict[str, Any] | None:
-    """Compact, log-safe view of durable call memory."""
+    """Compact, log-safe view of durable call memory.
+
+    Best-effort only. A prior commit/rollback on this request's session
+    expires the ORM instance's attributes; re-reading them can require an
+    implicit lazy-load that occasionally raises
+    ``sqlalchemy.exc.MissingGreenlet`` under the asyncpg pool's
+    pre-ping-on-checkout path when called from an exception handler. This
+    is purely for logs/metrics and must never crash (or mask) the actual
+    tool response, so any failure here degrades to ``None`` instead of
+    propagating.
+    """
 
     if call is None:
         return None
-    return {
-        "current_intent": call.current_intent,
-        "last_tool_called": call.last_tool_called,
-        "has_pending_confirmation": call.pending_confirmation is not None,
-        "has_availability_search": call.last_availability_search is not None,
-        "call_status": call.status.value if call.status is not None else None,
-    }
+    try:
+        return {
+            "current_intent": call.current_intent,
+            "last_tool_called": call.last_tool_called,
+            "has_pending_confirmation": call.pending_confirmation is not None,
+            "has_availability_search": call.last_availability_search is not None,
+            "call_status": call.status.value if call.status is not None else None,
+        }
+    except Exception:
+        return None
 
 
 def bind_conversation_context(
