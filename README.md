@@ -11,7 +11,9 @@ This README is the assignment write-up: what was built, why Retell, multilingual
 
 | Item | Value |
 | --- | --- |
-| **Test phone number** | Provision in Retell after deployment; it is deliberately not committed to the repository. |
+| **Live agent** | [Talk to Maya in Retell](https://agent.retellai.com/orb/agent_fbeb8e49d8f227d9916bb4b0d2?token=248c679dcc1b85db261db867a2676e3f) |
+| **Live backend API** | [Swagger / OpenAPI](https://care-ai-backend-321k.onrender.com/docs) |
+| **Repository** | [github.com/SudhanshuAi/care-ai](https://github.com/SudhanshuAi/care-ai) |
 | **Prompt** | [docs/prompts/SYSTEM_PROMPT.md](docs/prompts/SYSTEM_PROMPT.md) |
 | **Manual call script** | [docs/LIVE_TEST_QUESTIONS.md](docs/LIVE_TEST_QUESTIONS.md) |
 | **Retell setup** | [docs/retell/DASHBOARD_CONFIGURATION.md](docs/retell/DASHBOARD_CONFIGURATION.md) |
@@ -79,17 +81,19 @@ Assignment requires **one** platform fully live. **Primary / live: Retell AI.**
 | **Multilingual**       | Multilingual STT + ElevenLabs TTS via Retell; language mode `auto` — no translation dictionary                                                         |
 | **Tool calling**       | Custom Functions POST to our signed webhook; we own idempotency, state, and DB writes                                                                  |
 | **Latency UX**         | “Speak during execution” + prompt holding phrases mask tool round-trips                                                                                |
-| **Cost trade-off**     | Bolna is typically cheaper per minute and more self-hostable, but ops cost for STT/TTS/telephony outweighed that for a production-callable clinic demo |
+| **Delivery trade-off** | Bolna offers more component-level control, but Retell reduced integration work for telephony, interruption handling, multilingual voice configuration, and dashboard-managed tool calls. This left assignment time for durable scheduling state, live availability, and write-time conflict protection. |
 
 
-**Bolna** remains in-repo as a second adapter over the same `/tools` services (`docs/bolna/`). Use it if you prefer Bolna’s dashboard; do not treat dual adapters as dual live agents unless both numbers are configured.
+**Bolna** remains in-repo only as a portability adapter over the same `/tools`
+services (`docs/bolna/`). It is not a second deployed agent. **Retell is the
+only configured and callable voice platform for this submission.**
 
 **Other stack picks**
 
 
 | Layer   | Choice                              | Why                                                                        |
 | ------- | ----------------------------------- | -------------------------------------------------------------------------- |
-| LLM     | Retell-hosted GPT-4o (Retell LLM)   | Strong bilingual generation; dashboard-configurable for a live number fast |
+| LLM     | Retell LLM (configured in dashboard) | Dashboard-configurable bilingual conversation model for the live agent |
 | Backend | Python + FastAPI (async)            | Clean tool schemas (Pydantic) + async DB + ASGI eval harness               |
 | DB      | PostgreSQL + SQLAlchemy 2 + Alembic | Write-time double-booking prevention that holds under concurrency          |
 | State   | Postgres `calls` rows               | Drop-resume and returning-caller context survive restarts (no Redis)       |
@@ -228,9 +232,9 @@ harness, follow [backend/evaluation/README.md](backend/evaluation/README.md).
 For a callable demo, deploy the backend behind public HTTPS, add the provider secrets
 to that deployment environment, then follow
 [docs/retell/DASHBOARD_CONFIGURATION.md](docs/retell/DASHBOARD_CONFIGURATION.md).
-Provision and bind a Retell phone number; do not commit its number, API key, or public
-deployment URL. Use [docs/LIVE_TEST_QUESTIONS.md](docs/LIVE_TEST_QUESTIONS.md) for the
-reviewer call script.
+The current live demo is available through the Retell web link above. Provision and
+bind a Retell phone number separately if the reviewer must test by telephone. Use
+[docs/LIVE_TEST_QUESTIONS.md](docs/LIVE_TEST_QUESTIONS.md) for the reviewer call script.
 
 Unit/integration tests cover adapters, guardrails, PMS sync, and conversation resume.
 Tool contract details: [docs/TOOL_API.md](docs/TOOL_API.md).
@@ -262,9 +266,8 @@ Design intent:
 2. **Clinic seed** is a realistic two-branch Bengaluru dataset for demos; replace with a Cliniko (or other PMS) export if you need strictly third-party-sourced practitioners.
 3. **LLM brain** is Retell-hosted (not a custom LLM WebSocket orchestrator). Conversation *state* that must not be forgotten still lives in Postgres.
 4. **Eval language cases** assert metadata and tool paths, not spoken fluency.
-5. A live phone number, provider API key, and public HTTPS deployment are required
-   before submitting a callable demo; they must be supplied through deployment
-   configuration, never committed to Git.
+5. The submitted Retell web link is callable in a browser. A separate live phone
+   number is still required if reviewers insist on testing through PSTN.
 
 ---
 
