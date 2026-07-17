@@ -66,6 +66,15 @@ def create_app() -> FastAPI:
 
     app.add_middleware(RequestLoggingMiddleware)
 
+    @app.get("/", include_in_schema=False)
+    async def root() -> dict[str, str]:
+        # Render's platform health check defaults to "/". Without this,
+        # it 404s every check (visible as noisy request logs, and on some
+        # plans can be mistaken for an unhealthy instance) even though the
+        # app is otherwise fine. Kept dependency-free/instant so it never
+        # itself becomes the slow part of a cold start.
+        return {"status": "ok", "service": settings.app_name}
+
     app.include_router(health_router)
     app.include_router(tools_router)
     app.include_router(retell_webhook_router)
