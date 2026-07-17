@@ -1,7 +1,7 @@
 {
   "name": "create_appointment",
   "type": "custom",
-  "description": "Book only after the caller explicitly confirms one live option. ALWAYS include caller_full_name. NEVER create an anonymous booking. Copy practitioner_id, branch_id, appointment_type_id, and start_time unchanged from ONE slot in the most recent search_availability result. Never reconstruct, round, or guess start_time. If the tool returns availability_search_required, do NOT retry: call search_availability again and reconfirm.",
+  "description": "Book only after the caller explicitly confirms one live option AND lookup_patient has returned the patient UUID. ALWAYS include caller_full_name. NEVER create an anonymous booking. Copy patient_id exactly from lookup_patient patients[0].id. Copy practitioner_id, branch_id, appointment_type_id, and start_time unchanged from ONE slot in the most recent search_availability result. Never reconstruct, round, or guess start_time. If the tool returns patient_identification_required, do NOT retry: call lookup_patient. If it returns availability_search_required, call search_availability again and reconfirm.",
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
@@ -13,7 +13,7 @@
     "properties": {
       "patient_id": {
         "type": "string",
-        "description": "Exact patient UUID from lookup_patient (patients[].id). NEVER pass a name or phone here."
+        "description": "Required. Copy the exact UUID from lookup_patient patients[0].id. NEVER pass a name or phone, and never call this function before lookup_patient has returned one patient."
       },
       "caller_full_name": {
         "type": "string",

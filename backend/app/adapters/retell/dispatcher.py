@@ -227,11 +227,7 @@ class RetellToolDispatcher:
                 status="error",
                 exception_type=type(exc).__name__,
                 detail=detail,
-                error_code=(
-                    "availability_search_required"
-                    if detail != exc.detail
-                    else exc.code
-                ),
+                error_code=self._recovery_error_code(name, exc.detail, exc.code),
                 event=f"{self._provider}_tool_domain_error",
             )
         except (ValueError, KeyError, TypeError) as exc:
@@ -353,7 +349,38 @@ class RetellToolDispatcher:
                 "branch_id, appointment_type_id, and unchanged timezone-aware "
                 "start_time from one returned slot."
             )
+        if (
+            tool_name == "create_appointment"
+            and (
+                detail.startswith("patient_id is required and must be a UUID")
+                or detail.startswith("patient_id must be a valid UUID")
+            )
+        ):
+            return (
+                "Do NOT retry create_appointment. First call lookup_patient using "
+                "the caller's phone and full name. If there are multiple matches, "
+                "ask who the appointment is for. Only retry after lookup_patient "
+                "returns one patient and copy patients[0].id into patient_id."
+            )
         return detail
+
+    @staticmethod
+    def _recovery_error_code(tool_name: str, detail: str, default: str) -> str:
+        if (
+            tool_name in {"create_appointment", "reschedule_appointment"}
+            and detail
+            == "Booking requires a prior live availability search for this exact slot."
+        ):
+            return "availability_search_required"
+        if (
+            tool_name == "create_appointment"
+            and (
+                detail.startswith("patient_id is required and must be a UUID")
+                or detail.startswith("patient_id must be a valid UUID")
+            )
+        ):
+            return "patient_identification_required"
+        return default
 
     @staticmethod
     def _resolve_language(

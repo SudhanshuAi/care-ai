@@ -81,9 +81,8 @@ async def test_create_appointment_rejects_non_uuid_patient_id() -> None:
     )
 
     assert response["ok"] is False
-    assert response["error"]["code"] == "validation_error"
-    assert "patient_id" in response["error"]["detail"]
-    assert "UUID" in response["error"]["detail"]
+    assert response["error"]["code"] == "patient_identification_required"
+    assert "lookup_patient" in response["error"]["detail"]
 
 
 @pytest.mark.asyncio
@@ -138,8 +137,8 @@ async def test_create_appointment_rejects_missing_patient_id() -> None:
     )
 
     assert response["ok"] is False
-    assert response["error"]["code"] == "validation_error"
-    assert "patient_id" in response["error"]["detail"]
+    assert response["error"]["code"] == "patient_identification_required"
+    assert "lookup_patient" in response["error"]["detail"]
 
 
 def test_booking_offer_error_instructs_agent_to_research() -> None:
@@ -150,3 +149,22 @@ def test_booking_offer_error_instructs_agent_to_research() -> None:
 
     assert "Do NOT retry" in detail
     assert "search_availability again" in detail
+
+
+def test_missing_patient_error_instructs_agent_to_identify_patient() -> None:
+    raw_detail = (
+        "patient_id is required and must be a UUID from lookup_patient / "
+        "get_clinic_catalog / search_availability — not a name or phone."
+    )
+    detail = RetellToolDispatcher._recovery_detail(
+        "create_appointment", raw_detail
+    )
+
+    assert "Do NOT retry create_appointment" in detail
+    assert "lookup_patient" in detail
+    assert (
+        RetellToolDispatcher._recovery_error_code(
+            "create_appointment", raw_detail, "validation_error"
+        )
+        == "patient_identification_required"
+    )
