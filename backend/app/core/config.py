@@ -67,9 +67,20 @@ class Settings(BaseSettings):
     bolna_agent_id: str | None = None
     bolna_verify_auth: bool = True
 
+    # Comma-separated frontend origins for the demo mock-PMS console.
+    cors_origins: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.env == "production"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache

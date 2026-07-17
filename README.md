@@ -277,6 +277,7 @@ Design intent:
 
 ```text
 backend/           FastAPI app, adapters, services, Alembic, tests, evaluation
+frontend/          Mock PMS admin console (deploy separately on Render)
 docs/prompts/      Production system prompt
 docs/retell/       Agent config + Custom Function JSON + testing notes
 docs/bolna/        Optional Bolna adapter docs + tool JSON
@@ -284,3 +285,13 @@ docs/TOOL_API.md   REST tool contract
 docker-compose.yml Postgres + backend
 ```
 
+### Mock PMS admin UI
+
+Separate Render static site under [`frontend/`](frontend/README.md). It calls:
+
+- `GET /admin/pms/appointments`
+- `GET /admin/pms/appointments/{id}`
+- `GET /admin/pms/receipts`
+- `POST /admin/pms/appointments/{id}/retry`
+
+Set backend `CORS_ORIGINS` to include the frontend URL. No admin token is required for this demo console.

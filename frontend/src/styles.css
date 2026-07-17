@@ -1,0 +1,291 @@
+:root {
+  color-scheme: light;
+  --bg: #f3f1eb;
+  --bg-accent: #e7efe9;
+  --panel: #fffdf8;
+  --ink: #1d2a24;
+  --muted: #5f6f67;
+  --line: #d7ddd8;
+  --brand: #0f6b4c;
+  --brand-soft: #d9eee4;
+  --warn: #9a6700;
+  --warn-soft: #fff3cd;
+  --danger: #9b1c1c;
+  --danger-soft: #fde8e8;
+  --ok: #0f6b4c;
+  --ok-soft: #d9eee4;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(15, 107, 76, 0.08), transparent 40%),
+    linear-gradient(180deg, var(--bg-accent), var(--bg));
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.topbar h1 {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+  letter-spacing: -0.02em;
+}
+
+.topbar p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(29, 42, 36, 0.04);
+}
+
+.panel-pad {
+  padding: 18px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: white;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+.btn {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: white;
+  color: var(--ink);
+}
+
+.btn-primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: #f7faf7;
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:hover,
+tbody tr.active {
+  background: #f3faf6;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.badge-synced,
+.badge-booked,
+.badge-create {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.badge-pending,
+.badge-pending_retry,
+.badge-reschedule {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.badge-failed,
+.badge-cancelled,
+.badge-cancel {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.login-card {
+  max-width: 420px;
+  margin: 80px auto;
+}
+
+.login-card h1 {
+  margin-top: 0;
+}
+
+.error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+
+.detail-block + .detail-block {
+  margin-top: 18px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+}
+
+.kv {
+  font-size: 0.92rem;
+}
+
+.kv span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-bottom: 2px;
+}
+
+.timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.receipt {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fbfcfb;
+}
+
+.receipt pre {
+  margin: 10px 0 0;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: #122018;
+  color: #d7efe3;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.empty {
+  padding: 28px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .filters,
+  .layout,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+  }
+}
