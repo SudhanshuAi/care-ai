@@ -140,3 +140,13 @@ async def test_create_appointment_rejects_missing_patient_id() -> None:
     assert response["ok"] is False
     assert response["error"]["code"] == "validation_error"
     assert "patient_id" in response["error"]["detail"]
+
+
+def test_booking_offer_error_instructs_agent_to_research() -> None:
+    detail = RetellToolDispatcher._recovery_detail(
+        "create_appointment",
+        "Booking requires a prior live availability search for this exact slot.",
+    )
+
+    assert "Do NOT retry" in detail
+    assert "search_availability again" in detail

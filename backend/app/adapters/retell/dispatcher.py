@@ -39,7 +39,7 @@ from app.db.models import (
     Practitioner,
 )
 from app.db.models.call import Call
-from app.db.models.enums import CallDirection, FollowUpCategory
+from app.db.models.enums import CallDirection, CallStatus, FollowUpCategory
 from app.repositories.appointment_repository import AppointmentRepository
 from app.repositories.availability_offer_repository import AvailabilityOfferRepository
 from app.repositories.call_repository import CallRepository
@@ -137,6 +137,20 @@ class RetellToolDispatcher:
         )
 
         try:
+            if (
+                conversation is not None
+                and conversation.status == CallStatus.COMPLETED
+                and name
+                in {
+                    "create_appointment",
+                    "reschedule_appointment",
+                    "cancel_appointment",
+                }
+            ):
+                raise ValidationError(
+                    "This call has already ended. Do not retry a scheduling change; "
+                    "ask the caller to call back so the request can continue safely."
+                )
             if name == "lookup_patient":
                 result = await self._lookup_patient(args, call)
             elif name == "get_clinic_catalog":
@@ -200,6 +214,7 @@ class RetellToolDispatcher:
             )
             return {"ok": True, "tool": name, "result": result}
         except DomainError as exc:
+            detail = self._recovery_detail(name, exc.detail)
             return await self._tool_failure(
                 name=name,
                 call_id=call_id,
@@ -211,8 +226,12 @@ class RetellToolDispatcher:
                 timer=timer,
                 status="error",
                 exception_type=type(exc).__name__,
-                detail=exc.detail,
-                error_code=exc.code,
+                detail=detail,
+                error_code=(
+                    "availability_search_required"
+                    if detail != exc.detail
+                    else exc.code
+                ),
                 event=f"{self._provider}_tool_domain_error",
             )
         except (ValueError, KeyError, TypeError) as exc:
@@ -320,6 +339,21 @@ class RetellToolDispatcher:
             "tool": name,
             "error": {"code": error_code, "detail": detail},
         }
+
+    @staticmethod
+    def _recovery_detail(tool_name: str, detail: str) -> str:
+        if (
+            tool_name in {"create_appointment", "reschedule_appointment"}
+            and detail
+            == "Booking requires a prior live availability search for this exact slot."
+        ):
+            return (
+                "Do NOT retry this booking with the same arguments. Call "
+                "search_availability again, then use the exact practitioner_id, "
+                "branch_id, appointment_type_id, and unchanged timezone-aware "
+                "start_time from one returned slot."
+            )
+        return detail
 
     @staticmethod
     def _resolve_language(

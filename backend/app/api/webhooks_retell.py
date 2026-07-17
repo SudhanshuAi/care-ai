@@ -34,6 +34,14 @@ from app.services.conversation_state_service import ConversationStateService
 
 router = APIRouter(prefix="/webhooks/retell", tags=["retell"])
 logger = get_logger(__name__)
+_TERMINAL_STATUS_MARKERS = (
+    "complete",
+    "ended",
+    "disconnect",
+    "dropped",
+    "error",
+    "failed",
+)
 
 
 async def _enforce_signature(request: Request, settings: Settings) -> bytes:
@@ -130,6 +138,18 @@ async def retell_call_ended(
         or body.get("event")
         or ""
     ).lower()
+    if not any(marker in status_value for marker in _TERMINAL_STATUS_MARKERS):
+        logger.info(
+            "retell_call_ended_ignored",
+            call_id=str(retell_call_id),
+            conversation_id=conversation_id,
+            provider=PROVIDER_RETELL,
+            reason="non_terminal_status",
+            retell_status=status_value or None,
+            status="ignored",
+        )
+        return {"ok": True, "updated": False, "reason": "non_terminal_status"}
+
     disconnected = any(
         marker in status_value
         for marker in ("disconnect", "dropped", "error", "failed")

@@ -1,7 +1,7 @@
 {
   "name": "create_appointment",
   "type": "custom",
-  "description": "Book an appointment after the caller has confirmed branch, doctor, date, and time out loud. ALWAYS include caller_full_name. NEVER create an anonymous booking. Prefer UUIDs from get_clinic_catalog / search_availability. start_time MUST include a timezone offset.",
+  "description": "Book only after the caller explicitly confirms one live option. ALWAYS include caller_full_name. NEVER create an anonymous booking. Copy practitioner_id, branch_id, appointment_type_id, and start_time unchanged from ONE slot in the most recent search_availability result. Never reconstruct, round, or guess start_time. If the tool returns availability_search_required, do NOT retry: call search_availability again and reconfirm.",
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
@@ -45,7 +45,7 @@
       },
       "start_time": {
         "type": "string",
-        "description": "ISO-8601 datetime WITH timezone offset from search_availability, e.g. 2026-07-16T09:00:00+05:30."
+        "description": "Copy the complete ISO-8601 datetime WITH timezone offset unchanged from a single search_availability slot. Do not create this value from the spoken time."
       },
       "notes": {
         "type": "string",

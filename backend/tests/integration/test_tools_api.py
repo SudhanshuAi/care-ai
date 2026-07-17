@@ -224,6 +224,31 @@ async def test_retell_call_ended_persists_summary_even_without_tool_use() -> Non
 
 
 @pytest.mark.asyncio
+async def test_retell_call_ended_ignores_non_terminal_status() -> None:
+    call_id = f"retell-in-progress-{uuid4()}"
+    transport = httpx.ASGITransport(app=app)
+
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/webhooks/retell/call-ended",
+            json={
+                "call": {
+                    "call_id": call_id,
+                    "from_number": "+91-98765-10001",
+                    "call_status": "in_progress",
+                }
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "ok": True,
+        "updated": False,
+        "reason": "non_terminal_status",
+    }
+
+
+@pytest.mark.asyncio
 async def test_same_phone_callback_restores_disconnected_call() -> None:
     disconnected_call_id = f"retell-disconnected-{uuid4()}"
     callback_call_id = f"retell-callback-{uuid4()}"
