@@ -449,7 +449,7 @@ class RetellToolDispatcher:
 
     async def _list_appointments(self, args: dict[str, Any]) -> dict[str, Any]:
         patient_id = self._require_uuid(args.get("patient_id"), "patient_id")
-        upcoming_only = bool(args.get("upcoming_only", True))
+        upcoming_only = self._optional_bool(args.get("upcoming_only"), default=True)
         appointments = await self._appointment_service.list_for_patient(
             patient_id, upcoming_only=upcoming_only
         )
@@ -480,8 +480,8 @@ class RetellToolDispatcher:
             appointment_date=self._optional_date(args.get("appointment_date")),
             start_time=self._optional_time(args.get("start_time")),
             end_time=self._optional_time(args.get("end_time")),
-            earliest_only=bool(args.get("earliest_only", False)),
-            limit=int(args.get("limit", 5)),
+            earliest_only=self._optional_bool(args.get("earliest_only"), default=False),
+            limit=self._optional_int(args.get("limit"), default=5),
         )
         response = await self._availability_service.search(request)
         return response.model_dump(mode="json")
@@ -719,6 +719,25 @@ class RetellToolDispatcher:
                 f"(got {value!r}). Call lookup_patient / get_clinic_catalog / "
                 "search_availability first and reuse the id fields exactly."
             ) from exc
+
+    @staticmethod
+    def _optional_bool(value: Any, *, default: bool) -> bool:
+        # Some voice-LLM function-calling payloads send explicit `null`
+        # for an unset optional field rather than omitting it. `dict.get`
+        # with a default only helps for a *missing* key, so this treats
+        # None the same as missing instead of coercing it to False.
+        if value is None:
+            return default
+        return bool(value)
+
+    @staticmethod
+    def _optional_int(value: Any, *, default: int) -> int:
+        if value is None or value == "":
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(f"Expected a whole number, got {value!r}.") from exc
 
     @staticmethod
     def _optional_date(value: Any) -> date | None:
