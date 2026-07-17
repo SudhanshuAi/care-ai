@@ -8,13 +8,17 @@ time mid-conversation. Offers exist only so booking can prove a prior
 live search happened and is still fresh.
 """
 
-from datetime import UTC, date, datetime, timedelta
+from collections import defaultdict
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.guardrails import AVAILABILITY_OFFER_TTL
+from app.db.models.appointment import Appointment
+from app.db.models.appointment_type import AppointmentType
 from app.db.models.availability_offer import AvailabilityOffer
+from app.db.models.practitioner_schedule import PractitionerSchedule
 from app.repositories.availability_offer_repository import AvailabilityOfferRepository
 from app.repositories.scheduling_repository import SchedulingRepository
 from app.schemas.tools import (
@@ -24,6 +28,13 @@ from app.schemas.tools import (
 )
 
 SLOT_GRANULARITY = timedelta(minutes=5)
+
+# How far ahead to look when the caller didn't name a specific date (e.g.
+# "book the earliest slot"). Without this, a search made in the evening --
+# after a branch's only block for that appointment type has passed for the
+# day -- would report zero slots even though tomorrow (or later this week)
+# is wide open.
+SEARCH_HORIZON_DAYS = 30
 
 
 class AvailabilityService:
@@ -63,31 +74,109 @@ class AvailabilityService:
             raise ValidationError("start_time must be before end_time.")
 
         reference_today = await self._today_for_request(request)
-        local_date = request.appointment_date or reference_today
-        if local_date < reference_today:
-            # LLM callers sometimes miscompute "today"/"earliest" and pass an
-            # explicit past date. Reject deterministically instead of
-            # silently offering stale slots on a date that has already
-            # passed -- the caller-facing fix is to omit appointment_date
-            # for same-day/earliest requests and let this default to today.
-            raise ValidationError(
-                "appointment_date is in the past. Omit appointment_date for "
-                "'today'/'earliest available' requests, or use today's date "
-                "or later."
-            )
-        schedules = await self._repository.eligible_schedules(
+        if request.appointment_date is not None:
+            if request.appointment_date < reference_today:
+                # LLM callers sometimes miscompute "today"/"earliest" and
+                # pass an explicit past date. Reject deterministically
+                # instead of silently offering stale slots on a date that
+                # has already passed -- the caller-facing fix is to omit
+                # appointment_date for same-day/earliest requests and let
+                # this default to today.
+                raise ValidationError(
+                    "appointment_date is in the past. Omit appointment_date "
+                    "for 'today'/'earliest available' requests, or use "
+                    "today's date or later."
+                )
+            candidate_dates = [request.appointment_date]
+        else:
+            # No date named: search forward from today instead of only
+            # checking today, so a quiet evening or a fully-booked today
+            # doesn't get reported as "no availability" when tomorrow (or
+            # later this month) is open.
+            candidate_dates = [
+                reference_today + timedelta(days=offset)
+                for offset in range(SEARCH_HORIZON_DAYS)
+            ]
+
+        # Fetch schedules and booked appointments once for the whole
+        # candidate window (not once per day) so a multi-day "earliest
+        # available" rollover doesn't multiply round trips to what may be
+        # a slow/remote database -- it stays O(1) queries regardless of
+        # how many days it takes to find an open slot.
+        schedules = await self._repository.eligible_schedules_in_range(
             department_id=request.department_id or appointment_type.department_id,
             practitioner_id=request.practitioner_id,
             branch_id=request.branch_id,
-            local_date=local_date,
+            start_date=candidate_dates[0],
+            end_date=candidate_dates[-1],
+        )
+        schedules = [
+            schedule
+            for schedule in schedules
+            if schedule.practitioner.department_id == appointment_type.department_id
+        ]
+        booked_by_practitioner = await self._booked_by_practitioner(
+            schedules, candidate_dates[0], candidate_dates[-1], exclude_appointment_id
         )
 
+        slots: list[AvailabilitySlot] = []
+        queried_at = datetime.now(UTC)
+        for local_date in candidate_dates:
+            slots = self._slots_for_day(
+                request, appointment_type, local_date, schedules, booked_by_practitioner
+            )
+            if slots:
+                break
+
+        result = slots[:1] if request.earliest_only else slots[: request.limit]
+        if record_offers and self._offers is not None:
+            await self._persist_offers(result, queried_at)
+        return AvailabilitySearchResponse(slots=result, queried_at=queried_at)
+
+    async def _booked_by_practitioner(
+        self,
+        schedules: list[PractitionerSchedule],
+        start_date: date,
+        end_date: date,
+        exclude_appointment_id: UUID | None,
+    ) -> dict[UUID, list[Appointment]]:
+        practitioner_ids = {schedule.practitioner_id for schedule in schedules}
+        if not practitioner_ids:
+            return {}
+        # Pad a day on each side so a branch's local-timezone day doesn't
+        # spill past this UTC window and miss an adjacent booking.
+        period_start = datetime.combine(start_date, time.min, tzinfo=UTC) - timedelta(days=1)
+        period_end = datetime.combine(end_date, time.max, tzinfo=UTC) + timedelta(days=1)
+        booked = await self._repository.booked_appointments_for_practitioners(
+            practitioner_ids=practitioner_ids,
+            period_start=period_start,
+            period_end=period_end,
+            exclude_appointment_id=exclude_appointment_id,
+        )
+        by_practitioner: dict[UUID, list[Appointment]] = defaultdict(list)
+        for appointment in booked:
+            by_practitioner[appointment.practitioner_id].append(appointment)
+        return by_practitioner
+
+    def _slots_for_day(
+        self,
+        request: AvailabilitySearchRequest,
+        appointment_type: AppointmentType,
+        local_date: date,
+        schedules: list[PractitionerSchedule],
+        booked_by_practitioner: dict[UUID, list[Appointment]],
+    ) -> list[AvailabilitySlot]:
+        weekday = local_date.strftime("%A").lower()
         slots: list[AvailabilitySlot] = []
         duration = timedelta(minutes=appointment_type.duration_minutes)
         buffer = timedelta(minutes=appointment_type.buffer_minutes)
 
         for schedule in schedules:
-            if schedule.practitioner.department_id != appointment_type.department_id:
+            if schedule.weekday != weekday:
+                continue
+            if schedule.valid_from is not None and schedule.valid_from > local_date:
+                continue
+            if schedule.valid_to is not None and schedule.valid_to < local_date:
                 continue
 
             zone = ZoneInfo(schedule.branch.timezone)
@@ -111,17 +200,7 @@ class AvailabilityService:
                 max(schedule_start, lower_bound, now_in_zone)
             )
             latest_start = min(schedule_end, upper_bound) - duration - buffer
-
-            # Query once per live schedule window. The extra buffer on
-            # both ends ensures a candidate cannot sit immediately next
-            # to an existing appointment when the appointment type
-            # requires a gap.
-            booked = await self._repository.booked_appointments(
-                practitioner_id=schedule.practitioner_id,
-                period_start=(schedule_start - buffer).astimezone(UTC),
-                period_end=(schedule_end + buffer).astimezone(UTC),
-                exclude_appointment_id=exclude_appointment_id,
-            )
+            booked = booked_by_practitioner.get(schedule.practitioner_id, [])
 
             while candidate <= latest_start:
                 candidate_end = candidate + duration
@@ -147,11 +226,7 @@ class AvailabilityService:
                 candidate += SLOT_GRANULARITY
 
         slots.sort(key=lambda slot: (slot.start_time, slot.branch_name, slot.practitioner_name))
-        result = slots[:1] if request.earliest_only else slots[: request.limit]
-        queried_at = datetime.now(UTC)
-        if record_offers and self._offers is not None:
-            await self._persist_offers(result, queried_at)
-        return AvailabilitySearchResponse(slots=result, queried_at=queried_at)
+        return slots
 
     async def is_slot_currently_available(
         self,

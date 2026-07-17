@@ -5,6 +5,7 @@ returns current database state; `AvailabilityService` decides what is a
 valid candidate, keeping live-data access separate from business rules.
 """
 
+from collections.abc import Sequence
 from datetime import date, datetime
 from uuid import UUID
 
@@ -68,6 +69,49 @@ class SchedulingRepository:
             statement = statement.where(PractitionerSchedule.branch_id == branch_id)
         return list((await self._session.scalars(statement)).all())
 
+    async def eligible_schedules_in_range(
+        self,
+        *,
+        department_id: UUID | None,
+        practitioner_id: UUID | None,
+        branch_id: UUID | None,
+        start_date: date,
+        end_date: date,
+    ) -> list[PractitionerSchedule]:
+        """Like `eligible_schedules`, but for a whole date span at once.
+
+        Weekday matching is left to the caller (per candidate day, in
+        memory) so a multi-day "earliest available" rollover search can
+        fetch schedules once instead of once per day.
+        """
+        statement = (
+            select(PractitionerSchedule)
+            .join(PractitionerSchedule.practitioner)
+            .join(PractitionerSchedule.branch)
+            .where(
+                PractitionerSchedule.is_active.is_(True),
+                or_(
+                    PractitionerSchedule.valid_from.is_(None),
+                    PractitionerSchedule.valid_from <= end_date,
+                ),
+                or_(
+                    PractitionerSchedule.valid_to.is_(None),
+                    PractitionerSchedule.valid_to >= start_date,
+                ),
+            )
+            .options(
+                selectinload(PractitionerSchedule.practitioner),
+                selectinload(PractitionerSchedule.branch),
+            )
+        )
+        if department_id is not None:
+            statement = statement.where(Practitioner.department_id == department_id)
+        if practitioner_id is not None:
+            statement = statement.where(PractitionerSchedule.practitioner_id == practitioner_id)
+        if branch_id is not None:
+            statement = statement.where(PractitionerSchedule.branch_id == branch_id)
+        return list((await self._session.scalars(statement)).all())
+
     async def booked_appointments(
         self,
         *,
@@ -80,6 +124,35 @@ class SchedulingRepository:
             select(Appointment)
             .where(
                 Appointment.practitioner_id == practitioner_id,
+                Appointment.status == AppointmentStatus.BOOKED,
+                Appointment.start_time < period_end,
+                Appointment.end_time > period_start,
+            )
+            .order_by(Appointment.start_time)
+        )
+        if exclude_appointment_id is not None:
+            statement = statement.where(Appointment.id != exclude_appointment_id)
+        return list((await self._session.scalars(statement)).all())
+
+    async def booked_appointments_for_practitioners(
+        self,
+        *,
+        practitioner_ids: Sequence[UUID],
+        period_start: datetime,
+        period_end: datetime,
+        exclude_appointment_id: UUID | None = None,
+    ) -> list[Appointment]:
+        """Batched form of `booked_appointments` for several practitioners.
+
+        Used by a multi-day availability search so all candidate days share
+        one round trip instead of one query per practitioner per day.
+        """
+        if not practitioner_ids:
+            return []
+        statement = (
+            select(Appointment)
+            .where(
+                Appointment.practitioner_id.in_(practitioner_ids),
                 Appointment.status == AppointmentStatus.BOOKED,
                 Appointment.start_time < period_end,
                 Appointment.end_time > period_start,
