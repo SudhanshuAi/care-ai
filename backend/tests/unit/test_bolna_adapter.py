@@ -1,8 +1,8 @@
+import pytest
+
 from app.adapters.bolna.schemas import normalize_bolna_invocation
 from app.adapters.bolna.security import verify_bolna_bearer
 from app.core.exceptions import ValidationError
-
-import pytest
 
 
 def test_normalize_maps_path_tool_and_call_context() -> None:

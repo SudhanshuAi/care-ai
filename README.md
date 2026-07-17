@@ -9,12 +9,13 @@ This README is the assignment write-up: what was built, why Retell, multilingual
 ## Live demo
 
 
-| Item                         | Value                                                                              |
-| ---------------------------- | ---------------------------------------------------------------------------------- |
-| **Test phone number**        | *{}*                                                                               |
-| **Prompt**                   | `[docs/prompts/SYSTEM_PROMPT.md](docs/prompts/SYSTEM_PROMPT.md)`                   |
-| **Retell setup**             | `[docs/retell/DASHBOARD_CONFIGURATION.md](docs/retell/DASHBOARD_CONFIGURATION.md)` |
-| **Bolna (optional adapter)** | `[docs/bolna/README.md](docs/bolna/README.md)`                                     |
+| Item | Value |
+| --- | --- |
+| **Test phone number** | Provision in Retell after deployment; it is deliberately not committed to the repository. |
+| **Prompt** | [docs/prompts/SYSTEM_PROMPT.md](docs/prompts/SYSTEM_PROMPT.md) |
+| **Manual call script** | [docs/LIVE_TEST_QUESTIONS.md](docs/LIVE_TEST_QUESTIONS.md) |
+| **Retell setup** | [docs/retell/DASHBOARD_CONFIGURATION.md](docs/retell/DASHBOARD_CONFIGURATION.md) |
+| **Bolna (optional adapter)** | [docs/bolna/README.md](docs/bolna/README.md) |
 
 
 The production agent is **Retell LLM + Custom Functions** → `POST /webhooks/retell/tools` → shared scheduling services. Bolna is wired to the same services for portability; the live stack choice below is Retell.
@@ -129,23 +130,17 @@ Hard guarantees live in the backend/DB (conflicts, idempotency, resume state, li
 
 
 
-## Latency numbers
+## Evaluation and latency
 
-Measured with the in-repo eval harness (ASGI round-trip against real FastAPI + Postgres + Retell tool adapter). **Not** end-to-end spoken latency.
+The evaluation harness measures the real FastAPI routes, Retell adapter, PostgreSQL
+constraints, and mock PMS behavior. It is **not** an end-to-end spoken-latency test.
+Run it from a clean clone to generate a timestamped report for the environment being
+reviewed; reports are intentionally gitignored rather than presenting stale numbers.
 
-
-| Metric                         | Value (local Docker run)          |
-| ------------------------------ | --------------------------------- |
-| Conversation success rate      | **94.4%** (17 / 18 cases)         |
-| Booking accuracy               | **100%**                          |
-| Tool accuracy                  | **97.6%**                         |
-| Average tool latency           | **~37 ms**                        |
-| Average booking latency        | **~58 ms**                        |
-| Average response latency       | **~35 ms**                        |
-| Average TTFT (ASR→first audio) | **not collected** in this harness |
-
-
-**How to read these numbers:** backend tool latency is intentionally small so spoken latency is dominated by provider ASR + LLM + TTS + network. Holding phrases and Retell “speak during execution” exist so callers hear natural fill while tools run.
+**How to read the results:** backend tool latency is distinct from spoken latency,
+which also includes ASR, LLM first-token time, TTS, telephony, and network time.
+Holding phrases and Retell “speak during execution” reduce perceived wait time while
+tools run.
 
 **Component breakdown (production voice path):**
 
@@ -156,7 +151,10 @@ Measured with the in-repo eval harness (ASGI round-trip against real FastAPI + P
 | ASR, LLM TTFT, TTS, telephony | Retell analytics / call recordings (not inventable from HTTP times) |
 
 
-**False confidence in the harness:** it proves scheduling correctness, idempotency, conflict rejection, language metadata on tools, and drop-resume state. It does **not** grade spoken Hindi grammar, barge-in feel, or turns-to-booking on a live call. Re-run after clone:
+**False confidence in the harness:** it proves scheduling correctness, idempotency,
+conflict rejection, language metadata on tools, and drop-resume state. It does **not**
+grade spoken Hindi grammar, barge-in feel, or turns-to-booking on a live call. Run it
+only against the dedicated evaluation database:
 
 ```powershell
 # Create an isolated DB, migrate it, then run (from host with Docker up)
@@ -194,22 +192,48 @@ Reports write under `backend/evaluation/` and are gitignored.
 
 
 
-## Quick start (reviewer clone)
+## Reviewer quick start (clean clone)
 
-**Requirements:** Docker + Docker Compose.
+**Requirements:** Docker Desktop / Docker Compose. No Retell, Bolna, or cloud-database
+credentials are needed to run the backend locally.
+
+### Windows PowerShell
+
+```powershell
+git clone <YOUR_REPOSITORY_URL> care-ai
+cd care-ai
+.\verify-clone.ps1
+```
+
+The script creates a local `.env` from `.env.example`, refuses to use an untracked
+Compose override or a non-local database URL, builds the stack, waits for readiness,
+seeds the clinic, then runs lint and the test suite.
+
+### macOS / Linux or manual setup
 
 ```bash
 cp .env.example .env
 docker compose up --build -d
 docker compose exec backend python -m scripts.seed_clinic
-curl http://localhost:8000/health/live
-# OpenAPI: http://localhost:8000/docs
+curl http://localhost:8000/health/ready
+docker compose exec backend ruff check .
 docker compose exec backend pytest -q
 ```
 
-Wire a public HTTPS URL (ngrok / Render / etc.) into Retell Custom Functions using `[docs/retell/](docs/retell/)`. Paste `[docs/prompts/SYSTEM_PROMPT.md](docs/prompts/SYSTEM_PROMPT.md)` into the Retell LLM general prompt. Assign a phone number and call it.
+OpenAPI is available at `http://localhost:8000/docs`. To run the isolated evaluation
+harness, follow [backend/evaluation/README.md](backend/evaluation/README.md).
 
-Unit/integration tests cover adapters, guardrails, PMS sync, and conversation resume. Tool contract details: `[docs/TOOL_API.md](docs/TOOL_API.md)`.
+### Live voice setup
+
+For a callable demo, deploy the backend behind public HTTPS, add the provider secrets
+to that deployment environment, then follow
+[docs/retell/DASHBOARD_CONFIGURATION.md](docs/retell/DASHBOARD_CONFIGURATION.md).
+Provision and bind a Retell phone number; do not commit its number, API key, or public
+deployment URL. Use [docs/LIVE_TEST_QUESTIONS.md](docs/LIVE_TEST_QUESTIONS.md) for the
+reviewer call script.
+
+Unit/integration tests cover adapters, guardrails, PMS sync, and conversation resume.
+Tool contract details: [docs/TOOL_API.md](docs/TOOL_API.md).
 
 ---
 
@@ -238,8 +262,9 @@ Design intent:
 2. **Clinic seed** is a realistic two-branch Bengaluru dataset for demos; replace with a Cliniko (or other PMS) export if you need strictly third-party-sourced practitioners.
 3. **LLM brain** is Retell-hosted (not a custom LLM WebSocket orchestrator). Conversation *state* that must not be forgotten still lives in Postgres.
 4. **Eval language cases** assert metadata and tool paths, not spoken fluency.
-5. One harness case (`branch_unavailable`) currently fails when given a non-existent branch id (404) — expected “no slots” vs not-found semantics can be tightened.
-6. Live phone number must be provisioned in Retell and filled into the table at the top of this README before email submission.
+5. A live phone number, provider API key, and public HTTPS deployment are required
+   before submitting a callable demo; they must be supplied through deployment
+   configuration, never committed to Git.
 
 ---
 

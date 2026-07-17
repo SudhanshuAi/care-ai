@@ -1,8 +1,8 @@
-from uuid import uuid4
 from datetime import date
+from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
-from unittest.mock import MagicMock
 
 from app.adapters.retell.dispatcher import RetellToolDispatcher
 from app.adapters.retell.schemas import RetellCallContext, RetellToolInvocation

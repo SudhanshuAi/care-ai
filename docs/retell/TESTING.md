@@ -89,9 +89,11 @@ Configure the agent using [DASHBOARD_CONFIGURATION.md](DASHBOARD_CONFIGURATION.m
 docker compose exec backend pytest -q tests/unit/test_retell_security.py tests/unit/test_retell_dispatcher.py
 ```
 
-## F. What this milestone does not include
+## F. What is not covered by this live-call checklist
 
-- Eval harness / latency reports (later milestone)
+- The isolated backend evaluation harness; run
+  [`backend/evaluation/README.md`](../../backend/evaluation/README.md) for
+  scheduling and tool-route metrics.
 - Custom LLM WebSocket orchestrator (optional upgrade path)
 - Live Cliniko write-back
 - Production phone number provisioning for you (must be done in your Retell account)

@@ -11,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.deps import get_db
 from app.repositories.appointment_repository import AppointmentRepository
 from app.repositories.availability_offer_repository import AvailabilityOfferRepository
 from app.repositories.followup_repository import FollowUpRepository
@@ -32,7 +33,6 @@ from app.services.appointment_service import AppointmentService
 from app.services.availability_service import AvailabilityService
 from app.services.followup_service import FollowUpService
 from app.services.patient_service import PatientService
-from app.deps import get_db
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 DbSession = Annotated[AsyncSession, Depends(get_db)]

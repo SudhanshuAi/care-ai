@@ -45,6 +45,6 @@
   ],
   "post_call_analysis": {
     "enabled": true,
-    "notes": "Optional; evaluation harness comes in a later milestone."
+    "notes": "Optional; use the in-repo evaluation harness for backend and tool-route metrics."
   }
 }

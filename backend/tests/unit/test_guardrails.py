@@ -15,8 +15,8 @@ from app.core.guardrails import (
     notes_promise_immediate_transfer,
     require_caller_full_name,
 )
-from app.services.appointment_service import AppointmentService
 from app.schemas.tools import CreateAppointmentRequest, FollowUpResponse
+from app.services.appointment_service import AppointmentService
 
 
 def test_require_caller_full_name_rejects_blank() -> None:

@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = (
-        "postgresql+asyncpg://careai:careai@localhost:5432/careai"
+        "postgresql+asyncpg://careai:careai_dev_password@localhost:5432/careai"
     )
     db_pool_size: int = 5
     db_max_overflow: int = 10

@@ -12,7 +12,7 @@ import asyncio
 import json
 import os
 import time
-from datetime import UTC, date, datetime, time as clock_time, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -154,13 +154,14 @@ class Harness:
         start_time: str | None = None,
         branch_id: str | None = None,
         practitioner_id: str | None = None,
+        expected: set[int] | None = None,
     ) -> dict[str, Any]:
         body = await self.request(
             result,
             "search_availability",
             "POST",
             "/tools/search_availability",
-            expected={200},
+            expected=expected or {200},
             tool="search_availability",
             json={
                 "appointment_type_id": ids["appointment_type_id"],
@@ -297,11 +298,13 @@ async def _run_case(harness: Harness, definition: dict[str, Any]) -> CaseResult:
             if scenario == "doctor_unavailable":
                 body = await harness.slot(result, ids, appointment_date=harness.next_scheduled_date().replace(
                     day=harness.next_scheduled_date().day) + timedelta(days=(6 - harness.next_scheduled_date().weekday())))
+                assert body["slots"] == []
             elif scenario == "branch_unavailable":
-                body = await harness.slot(result, ids, branch_id=str(uuid4()))
+                body = await harness.slot(result, ids, branch_id=str(uuid4()), expected={404})
+                assert "not found" in str(body).lower()
             else:
                 body = await harness.slot(result, ids, start_time="20:00")
-            assert body["slots"] == []
+                assert body["slots"] == []
         elif scenario == "dropped_call":
             call_id = harness.call_id(result.case_id)
             ended = await harness.request(result, "call_ended_disconnected", "POST", "/webhooks/retell/call-ended",

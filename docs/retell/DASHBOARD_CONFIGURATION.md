@@ -18,7 +18,8 @@ The adapter translates `{ name, args, call }` into the same services the REST la
 
 ## 1. Prerequisites
 
-1. Backend reachable on a public HTTPS URL (ngrok for local, Fly later).
+1. Backend reachable on a public HTTPS URL (ngrok for local testing, or your
+   production host for the submitted demo).
 2. `docker compose up` running with seeded clinic data:
    ```bash
    docker compose exec backend python -m scripts.seed_clinic
@@ -74,8 +75,26 @@ Dashboard → **Agents** → Create / Edit:
 1. Buy / assign a Retell number in the dashboard.
 2. Bind it to this agent.
 3. Place a test call from a phone whose number can be added as a seeded patient if needed.
+4. Record the assigned number in the submission email or a private deployment note;
+   do not commit it, the API key, or your public deployment URL.
 
-## 5. Tool → backend mapping
+## 5. Pre-submission deployment checklist
+
+- [ ] The deployed service uses `ENV=production`, `RETELL_VERIFY_SIGNATURES=true`,
+  and a real `RETELL_API_KEY` injected by the hosting platform.
+- [ ] `GET /health/ready` succeeds over the public HTTPS URL.
+- [ ] Every Retell Custom Function points to
+  `https://YOUR_HOST/webhooks/retell/tools`, not a local or ngrok URL that has
+  expired.
+- [ ] The call-ended webhook points to
+  `https://YOUR_HOST/webhooks/retell/call-ended`.
+- [ ] A Retell phone number is bound to this agent.
+- [ ] The local test suite and the manual
+  [live test questions](../LIVE_TEST_QUESTIONS.md) have been run.
+- [ ] The submission email or private write-up supplies the test phone number to
+  reviewers; repository files remain secret-free.
+
+## 6. Tool → backend mapping
 
 | Retell tool | Backend behavior |
 |---|---|
@@ -88,12 +107,12 @@ Dashboard → **Agents** → Create / Edit:
 | `cancel_appointment` | `AppointmentService.cancel` |
 | `create_followup` | Upserts `Call` from Retell `call_id`, then `FollowUpService.create` |
 
-## 6. Security
+## 7. Security
 
 - Requests include `X-Retell-Signature`.
 - When `RETELL_API_KEY` is set and `RETELL_VERIFY_SIGNATURES=true`, invalid signatures are rejected with 422.
 - Production refuses to run the webhook without an API key.
 
-## 7. Stack note (plan vs this milestone)
+## 8. Stack note (plan vs this milestone)
 
 The long-term architecture plan includes a Custom LLM WebSocket orchestrator for deterministic slot state. This milestone ships the **Retell LLM + Custom Functions** path so the agent is dashboard-configurable and live-callable first. The tool adapter and `/tools` services are shared; a later milestone can move the brain behind Custom LLM without rewriting the scheduling backend.

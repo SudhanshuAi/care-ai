@@ -1,11 +1,11 @@
-from app.adapters.retell.security import verify_retell_signature
-from app.core.exceptions import ValidationError
-
 import hashlib
 import hmac
 import time
 
 import pytest
+
+from app.adapters.retell.security import verify_retell_signature
+from app.core.exceptions import ValidationError
 
 
 def _sign(raw_body: bytes, api_key: str, timestamp_ms: int | None = None) -> str:

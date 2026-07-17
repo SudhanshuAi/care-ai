@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Select, func, literal_column, select

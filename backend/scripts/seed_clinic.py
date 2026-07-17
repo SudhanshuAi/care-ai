@@ -5,12 +5,11 @@ weekly schedules, appointment types, and a handful of sample patients.
 NOTE ON DATA PROVENANCE: the clinic/branch/doctor details below are
 placeholder-realistic data for exercising the schema end to end during
 scaffolding. The assignment requires the final dataset to be a real
-clinic "sourced not invented" (e.g. via a Cliniko trial export) --
-see docs/IMPLEMENTATION_PLAN.md, section 10, assumption 4. Replace this
-data before treating it as the submission's dataset.
+clinic "sourced not invented" (e.g. via a Cliniko trial export). Replace
+this data before treating it as the submission's dataset.
 
-Safe to re-run: it looks for a clinic with `CLINIC_NAME` and exits
-without making changes if one already exists.
+Safe to re-run: it does not duplicate the clinic data. It also ensures
+the future, marked live-demo appointment fixtures are present.
 
 Usage (from the `backend/` directory, or via `docker compose exec
 backend ...`):
@@ -20,12 +19,15 @@ backend ...`):
 
 import asyncio
 import datetime as dt
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
 from app.db.models import (
+    Appointment,
     AppointmentType,
     Branch,
     Clinic,
@@ -35,7 +37,7 @@ from app.db.models import (
     PractitionerBranch,
     PractitionerSchedule,
 )
-from app.db.models.enums import Weekday
+from app.db.models.enums import AppointmentStatus, PmsSyncStatus, Weekday
 from app.db.session import session_scope
 
 logger = get_logger(__name__)
@@ -53,12 +55,17 @@ WEEKDAYS_MON_SAT = [
 
 MORNING_BLOCK = (dt.time(9, 0), dt.time(13, 0))
 AFTERNOON_BLOCK = (dt.time(14, 0), dt.time(18, 0))
+CLINIC_TIMEZONE = ZoneInfo("Asia/Kolkata")
+
+# These notes identify rows created exclusively for live-demo testing.
+TEST_APPOINTMENT_MARKER = "[live-demo-fixture]"
 
 
 async def seed() -> None:
     async with session_scope() as db:
         existing = await db.scalar(select(Clinic).where(Clinic.name == CLINIC_NAME))
         if existing is not None:
+            await _seed_test_appointments(db)
             logger.info("seed_skipped_already_present", clinic_id=str(existing.id))
             return
 
@@ -242,6 +249,8 @@ async def seed() -> None:
             ),
         ]
         db.add_all(patients)
+        await db.flush()
+        await _seed_test_appointments(db)
 
         logger.info(
             "seed_completed",
@@ -251,6 +260,101 @@ async def seed() -> None:
             practitioners=len(practitioners_spec),
             patients=len(patients),
         )
+
+
+async def _seed_test_appointments(db: AsyncSession) -> None:
+    """Create future appointments for live cancellation and reschedule tests."""
+
+    next_clinic_day = _next_clinic_day()
+    now = dt.datetime.now(dt.UTC)
+    fixture_specs = [
+        (
+            "Rahul Verma",
+            "Dr. Ananya Rao",
+            "Koramangala Branch",
+            "Dental Checkup",
+            dt.time(11, 0),
+            "rahul-cancel",
+        ),
+        (
+            "Sneha Kulkarni",
+            "Dr. Sanjay Gupta",
+            "Indiranagar Branch",
+            "Dermatology Consultation",
+            dt.time(15, 0),
+            "sneha-reschedule",
+        ),
+        (
+            "Fatima Sheikh",
+            "Dr. Meera Nair",
+            "Indiranagar Branch",
+            "Physiotherapy Session",
+            dt.time(16, 0),
+            "fatima-list",
+        ),
+    ]
+
+    for (
+        patient_name,
+        practitioner_name,
+        branch_name,
+        appointment_type_name,
+        local_start_time,
+        fixture_name,
+    ) in fixture_specs:
+        marker = f"{TEST_APPOINTMENT_MARKER} {fixture_name}"
+        existing = await db.scalar(
+            select(Appointment).where(
+                Appointment.notes == marker,
+                Appointment.status == AppointmentStatus.BOOKED,
+                Appointment.start_time > now,
+            )
+        )
+        if existing is not None:
+            continue
+
+        patient = await db.scalar(select(Patient).where(Patient.full_name == patient_name))
+        practitioner = await db.scalar(
+            select(Practitioner).where(Practitioner.display_name == practitioner_name)
+        )
+        branch = await db.scalar(select(Branch).where(Branch.name == branch_name))
+        appointment_type = await db.scalar(
+            select(AppointmentType).where(AppointmentType.name == appointment_type_name)
+        )
+        if not all((patient, practitioner, branch, appointment_type)):
+            raise RuntimeError(f"Unable to create test fixture {fixture_name}: seed data is incomplete.")
+
+        local_start = dt.datetime.combine(
+            next_clinic_day, local_start_time, tzinfo=CLINIC_TIMEZONE
+        )
+        db.add(
+            Appointment(
+                patient_id=patient.id,
+                practitioner_id=practitioner.id,
+                branch_id=branch.id,
+                appointment_type_id=appointment_type.id,
+                start_time=local_start.astimezone(dt.UTC),
+                end_time=(
+                    local_start
+                    + dt.timedelta(minutes=appointment_type.duration_minutes)
+                ).astimezone(dt.UTC),
+                status=AppointmentStatus.BOOKED,
+                pms_sync_status=PmsSyncStatus.SYNCED,
+                notes=marker,
+            )
+        )
+
+    await db.flush()
+    logger.info("test_appointments_seeded", appointment_date=next_clinic_day.isoformat())
+
+
+def _next_clinic_day() -> dt.date:
+    """Return the next Monday-Saturday date in the clinic's local timezone."""
+
+    candidate = dt.datetime.now(CLINIC_TIMEZONE).date() + dt.timedelta(days=1)
+    while candidate.weekday() == 6:  # Sunday
+        candidate += dt.timedelta(days=1)
+    return candidate
 
 
 async def main() -> None:

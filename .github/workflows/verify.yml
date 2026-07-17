@@ -1,0 +1,51 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: careai
+          POSTGRES_PASSWORD: careai_dev_password
+          POSTGRES_DB: careai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U careai -d careai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://careai:careai_dev_password@localhost:5432/careai
+      RETELL_VERIFY_SIGNATURES: "false"
+      BOLNA_VERIFY_AUTH: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Apply migrations
+        working-directory: backend
+        run: alembic upgrade head
+      - name: Seed the local test clinic
+        working-directory: backend
+        run: python -m scripts.seed_clinic
+      - name: Lint
+        working-directory: backend
+        run: ruff check app scripts tests evaluation
+      - name: Test
+        working-directory: backend
+        run: pytest -q

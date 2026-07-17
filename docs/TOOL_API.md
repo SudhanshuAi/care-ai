@@ -12,8 +12,9 @@ docker compose exec backend python -m scripts.seed_clinic
 docker compose exec backend pytest -q
 ```
 
-The seed script is safe to run again; it does nothing when the starter
-clinic is already present.
+The seed script is safe to run again; it does not duplicate clinic data and
+ensures the marked future demo appointments remain available for cancellation
+and reschedule testing.
 
 ## Patient lookup
 
@@ -41,7 +42,7 @@ curl -X POST "http://localhost:8000/tools/search_availability" \
   -d '{
     "appointment_type_id": "APPOINTMENT_TYPE_UUID",
     "branch_id": "BRANCH_UUID",
-    "appointment_date": "2026-07-16",
+    "appointment_date": "YYYY-MM-DD",
     "start_time": "09:00:00",
     "end_time": "17:00:00",
     "earliest_only": true
@@ -59,14 +60,14 @@ mandatory, even when the patient ID is already known.
 ```bash
 curl -X POST "http://localhost:8000/tools/create_appointment" \
   -H "Content-Type: application/json" \
-  -H "Idempotency-Key: booking-20260716-001" \
+  -H "Idempotency-Key: booking-example-001" \
   -d '{
     "patient_id": "PATIENT_UUID",
     "caller_full_name": "Rahul Verma",
     "practitioner_id": "PRACTITIONER_UUID",
     "branch_id": "BRANCH_UUID",
     "appointment_type_id": "APPOINTMENT_TYPE_UUID",
-    "start_time": "2026-07-16T09:00:00+05:30"
+    "start_time": "YYYY-MM-DDT09:00:00+05:30"
   }'
 ```
 
@@ -79,18 +80,18 @@ with a different payload returns HTTP 409.
 ```bash
 curl -X POST "http://localhost:8000/tools/appointments/APPOINTMENT_UUID/reschedule" \
   -H "Content-Type: application/json" \
-  -H "Idempotency-Key: reschedule-20260716-001" \
+  -H "Idempotency-Key: reschedule-example-001" \
   -d '{
     "caller_full_name": "Rahul Verma",
     "practitioner_id": "PRACTITIONER_UUID",
     "branch_id": "BRANCH_UUID",
     "appointment_type_id": "APPOINTMENT_TYPE_UUID",
-    "start_time": "2026-07-16T10:00:00+05:30"
+    "start_time": "YYYY-MM-DDT10:00:00+05:30"
   }'
 
 curl -X POST "http://localhost:8000/tools/appointments/APPOINTMENT_UUID/cancel" \
   -H "Content-Type: application/json" \
-  -H "Idempotency-Key: cancel-20260716-001" \
+  -H "Idempotency-Key: cancel-example-001" \
   -d '{
     "caller_full_name": "Rahul Verma",
     "reason": "Cannot attend"

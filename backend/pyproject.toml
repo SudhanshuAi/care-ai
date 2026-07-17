@@ -43,6 +43,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# FastAPI dependency injection uses `Depends(...)` in function defaults, and
+# generated migration/evaluation code intentionally contains long SQL/payload lines.
+ignore = ["B008", "E501"]
 
 [tool.mypy]
 python_version = "3.12"
