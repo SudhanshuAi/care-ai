@@ -1,7 +1,7 @@
 {
   "name": "search_availability",
   "type": "custom",
-  "description": "Search LIVE appointment availability from the database. NEVER invent slots from memory. Re-run this tool whenever the caller changes date, time window, doctor, specialty, or branch. Set earliest_only=true when the caller asks for the earliest slot (search across practitioners and branches when filters allow).",
+  "description": "Search LIVE appointment availability from the database. NEVER invent slots from memory. Re-run this tool whenever the caller changes date, time window, doctor, specialty, or branch. Set earliest_only=true when the caller asks for the earliest slot (search across practitioners and branches when filters allow). Each returned slot includes start_time_display (e.g. 'Sat, 18 Jul, 9:00 AM') already converted to the branch's local time -- speak that string verbatim. Never compute AM/PM or local time yourself from start_time, which is UTC.",
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,

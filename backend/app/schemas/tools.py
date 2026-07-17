@@ -82,6 +82,13 @@ class AvailabilitySlot(ApiModel):
     appointment_type_id: UUID
     start_time: datetime
     end_time: datetime
+    start_time_display: str = Field(
+        description=(
+            "Pre-computed local date/time in the branch timezone, e.g. "
+            "'Sat, 18 Jul, 9:00 AM'. Speak this verbatim; never derive the "
+            "spoken time yourself from start_time (which is UTC)."
+        ),
+    )
 
 
 class AvailabilitySearchResponse(ApiModel):

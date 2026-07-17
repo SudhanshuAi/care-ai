@@ -221,6 +221,11 @@ class AvailabilityService:
                             appointment_type_id=appointment_type.id,
                             start_time=candidate.astimezone(UTC),
                             end_time=candidate_end.astimezone(UTC),
+                            # Computed in the branch-local zone (`candidate`,
+                            # pre-UTC-conversion) so the agent never has to do
+                            # its own UTC-to-local/AM-PM math, which it gets
+                            # wrong on Z-suffixed timestamps.
+                            start_time_display=self._format_local(candidate),
                         )
                     )
                 candidate += SLOT_GRANULARITY
@@ -305,6 +310,17 @@ class AvailabilityService:
         if branch is None:
             raise NotFoundError("Branch was not found.")
         return datetime.now(ZoneInfo(branch.timezone)).date()
+
+    @staticmethod
+    def _format_local(value: datetime) -> str:
+        # e.g. "Sat, 18 Jul, 9:00 AM" -- strip a leading zero from the
+        # hour ("09:00 AM" -> "9:00 AM") since %-I is not portable.
+        formatted = value.strftime("%a, %d %b, %I:%M %p")
+        hour, _, rest = formatted.partition(":")
+        *prefix, hour_value = hour.rsplit(" ", 1)
+        if hour_value.startswith("0"):
+            hour_value = hour_value[1:]
+        return " ".join([*prefix, hour_value]) + ":" + rest
 
     @staticmethod
     def _ceil_to_granularity(value: datetime) -> datetime:

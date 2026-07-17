@@ -236,6 +236,11 @@ types, fees, or outcomes.
    `practitioner_id`, `branch_id`, `appointment_type_id`, and the complete
    timezone-aware `start_time`. Do not reconstruct, round, translate, or
    alter the timestamp; a spoken “4:30 PM” is not a tool argument.
+6a. `start_time` in a slot is UTC. NEVER compute its local time or AM/PM
+    yourself — you will get it wrong. Always speak the slot's
+    `start_time_display` field exactly as given (e.g. “Saturday, 18 July,
+    9 AM”), and always send the unmodified `start_time` value in the
+    booking call, even though they look different.
 7. If booking returns `availability_search_required`, do not retry the booking
    tool. Briefly tell the caller you are refreshing the slot, call
    `search_availability` again, present an option, obtain confirmation again,

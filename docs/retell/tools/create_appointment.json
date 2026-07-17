@@ -1,7 +1,7 @@
 {
   "name": "create_appointment",
   "type": "custom",
-  "description": "Book only after the caller explicitly confirms one live option AND lookup_patient has returned the patient UUID. ALWAYS include caller_full_name. NEVER create an anonymous booking. Copy patient_id exactly from lookup_patient patients[0].id. Copy practitioner_id, branch_id, appointment_type_id, and start_time unchanged from ONE slot in the most recent search_availability result. Never reconstruct, round, or guess start_time. If the tool returns patient_identification_required, do NOT retry: call lookup_patient. If it returns availability_search_required, call search_availability again and reconfirm.",
+  "description": "Book only after the caller explicitly confirms one live option AND lookup_patient has returned the patient UUID. ALWAYS include caller_full_name. NEVER create an anonymous booking. Copy patient_id exactly from lookup_patient patients[0].id. Copy practitioner_id, branch_id, appointment_type_id, and start_time UNCHANGED from ONE slot object in the most recent search_availability result -- start_time is UTC and looks nothing like the spoken local time (start_time_display); never reconstruct, round, retime, or guess it, and never derive it from what you said aloud. If the tool returns patient_identification_required, do NOT retry: call lookup_patient. If it returns availability_search_required, call search_availability again and reconfirm.",
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
@@ -9,7 +9,14 @@
   "timeout_ms": 15000,
   "parameters": {
     "type": "object",
-    "required": ["patient_id", "caller_full_name", "start_time"],
+    "required": [
+      "patient_id",
+      "caller_full_name",
+      "practitioner_id",
+      "branch_id",
+      "appointment_type_id",
+      "start_time"
+    ],
     "properties": {
       "patient_id": {
         "type": "string",
@@ -21,31 +28,31 @@
       },
       "practitioner_id": {
         "type": "string",
-        "description": "Doctor UUID being booked."
+        "description": "Required. Copy unchanged from practitioner_id in the same selected search_availability slot."
       },
       "practitioner_name": {
         "type": "string",
-        "description": "Doctor name if UUID is not in context."
+        "description": "Doctor name only when practitioner_id is unavailable."
       },
       "branch_id": {
         "type": "string",
-        "description": "Branch UUID being booked. Must match the branch said out loud."
+        "description": "Required. Copy unchanged from branch_id in the same selected search_availability slot."
       },
       "branch_name": {
         "type": "string",
-        "description": "Branch name if UUID is not in context."
+        "description": "Branch name only when branch_id is unavailable."
       },
       "appointment_type_id": {
         "type": "string",
-        "description": "Appointment type UUID."
+        "description": "Required. Copy unchanged from appointment_type_id in the same selected search_availability slot."
       },
       "appointment_type_name": {
         "type": "string",
-        "description": "Appointment type name if UUID is not in context."
+        "description": "Appointment type name only when appointment_type_id is unavailable."
       },
       "start_time": {
         "type": "string",
-        "description": "Copy the complete ISO-8601 datetime WITH timezone offset unchanged from a single search_availability slot. Do not create this value from the spoken time."
+        "description": "Required. Copy the complete ISO-8601 UTC timestamp unchanged from start_time in the same selected search_availability slot. This is NOT the same string as start_time_display -- never derive it from the local time you spoke aloud."
       },
       "notes": {
         "type": "string",

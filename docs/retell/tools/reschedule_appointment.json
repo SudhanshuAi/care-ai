@@ -1,7 +1,7 @@
 {
   "name": "reschedule_appointment",
   "type": "custom",
-  "description": "Move an existing booked appointment to a new live-checked slot. Re-search availability first if the caller changed preferences. Mention a cancellation fee ONLY when the tool response says cancellation_fee.applicable is true.",
+  "description": "Move an existing booked appointment to a new live-checked slot. Re-search availability first if the caller changed preferences. Copy practitioner_id, branch_id, appointment_type_id, and start_time UNCHANGED from ONE slot object in the most recent search_availability result -- start_time is UTC and looks nothing like the spoken local time (start_time_display); never reconstruct, retime, or guess it. Mention a cancellation fee ONLY when the tool response says cancellation_fee.applicable is true.",
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
@@ -9,7 +9,14 @@
   "timeout_ms": 15000,
   "parameters": {
     "type": "object",
-    "required": ["appointment_id", "caller_full_name", "start_time"],
+    "required": [
+      "appointment_id",
+      "caller_full_name",
+      "practitioner_id",
+      "branch_id",
+      "appointment_type_id",
+      "start_time"
+    ],
     "properties": {
       "appointment_id": {
         "type": "string",
@@ -20,26 +27,32 @@
         "description": "Caller full name matching the patient on the appointment."
       },
       "practitioner_id": {
-        "type": "string"
+        "type": "string",
+        "description": "Required. Copy unchanged from practitioner_id in the same selected search_availability slot."
       },
       "practitioner_name": {
-        "type": "string"
+        "type": "string",
+        "description": "Doctor name only when practitioner_id is unavailable."
       },
       "branch_id": {
-        "type": "string"
+        "type": "string",
+        "description": "Required. Copy unchanged from branch_id in the same selected search_availability slot."
       },
       "branch_name": {
-        "type": "string"
+        "type": "string",
+        "description": "Branch name only when branch_id is unavailable."
       },
       "appointment_type_id": {
-        "type": "string"
+        "type": "string",
+        "description": "Required. Copy unchanged from appointment_type_id in the same selected search_availability slot."
       },
       "appointment_type_name": {
-        "type": "string"
+        "type": "string",
+        "description": "Appointment type name only when appointment_type_id is unavailable."
       },
       "start_time": {
         "type": "string",
-        "description": "New ISO-8601 start time with timezone offset."
+        "description": "Required. Copy the complete ISO-8601 UTC timestamp unchanged from start_time in the same selected search_availability slot. This is NOT the same string as start_time_display -- never derive it from the local time you spoke aloud."
       },
       "notes": {
         "type": "string"
