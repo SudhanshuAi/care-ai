@@ -3,6 +3,8 @@
 Separate frontend for inspecting mock-PMS write-backs after voice bookings.
 Open access — demo/seeded data only.
 
+**Live:** [https://care-ai-pms.onrender.com/](https://care-ai-pms.onrender.com/)
+
 ## What it shows
 
 - Appointment list with booking status and PMS sync status
@@ -26,7 +28,7 @@ Open http://localhost:5173.
 On the API service set CORS for your frontend origin:
 
 ```env
-CORS_ORIGINS=http://localhost:5173,https://your-frontend.onrender.com
+CORS_ORIGINS=http://localhost:5173,https://care-ai-pms.onrender.com
 ```
 
 No admin token is required for this demo console.
@@ -41,4 +43,5 @@ No admin token is required for this demo console.
    - `VITE_API_BASE_URL=https://care-ai-backend-321k.onrender.com`
      (or your backend URL; no trailing slash)
 
-After deploy, add the frontend URL to the backend `CORS_ORIGINS`.
+After deploy, add the frontend URL to the backend `CORS_ORIGINS`
+(for this deployment: `https://care-ai-pms.onrender.com`).

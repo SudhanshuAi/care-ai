@@ -13,6 +13,7 @@ This README is the assignment write-up: what was built, why Retell, multilingual
 | --- | --- |
 | **Live agent** | [Talk to Maya in Retell](https://agent.retellai.com/orb/agent_fbeb8e49d8f227d9916bb4b0d2?token=248c679dcc1b85db261db867a2676e3f) |
 | **Live backend API** | [Swagger / OpenAPI](https://care-ai-backend-321k.onrender.com/docs) |
+| **Mock PMS console** | [care-ai-pms.onrender.com](https://care-ai-pms.onrender.com/) |
 | **Repository** | [github.com/SudhanshuAi/care-ai](https://github.com/SudhanshuAi/care-ai) |
 | **Prompt** | [docs/prompts/SYSTEM_PROMPT.md](docs/prompts/SYSTEM_PROMPT.md) |
 | **Manual call script** | [docs/LIVE_TEST_QUESTIONS.md](docs/LIVE_TEST_QUESTIONS.md) |
@@ -287,11 +288,14 @@ docker-compose.yml Postgres + backend
 
 ### Mock PMS admin UI
 
-Separate Render static site under [`frontend/`](frontend/README.md). It calls:
+Live: [https://care-ai-pms.onrender.com/](https://care-ai-pms.onrender.com/)  
+Source: [`frontend/`](frontend/README.md)
+
+It calls:
 
 - `GET /admin/pms/appointments`
 - `GET /admin/pms/appointments/{id}`
 - `GET /admin/pms/receipts`
 - `POST /admin/pms/appointments/{id}/retry`
 
-Set backend `CORS_ORIGINS` to include the frontend URL. No admin token is required for this demo console.
+Backend `CORS_ORIGINS` must include `https://care-ai-pms.onrender.com`. No admin token is required for this demo console.
