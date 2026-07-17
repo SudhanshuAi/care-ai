@@ -41,8 +41,10 @@ class PmsSyncService:
         self._settings = settings or get_settings()
         self._adapter_factory = adapter_factory or self._build_adapter
 
-    async def sync_appointment(self, appointment_id: UUID) -> PmsSyncResult:
-        """Try one write-back after a booking transaction has committed."""
+    async def sync_appointment(
+        self, appointment_id: UUID, *, operation: str = "create"
+    ) -> PmsSyncResult:
+        """Write one appointment lifecycle operation after its transaction commits."""
 
         async with session_scope() as session:
             repository = PmsRepository(session)
@@ -54,12 +56,22 @@ class PmsSyncService:
                     attempted=False,
                     detail="Appointment no longer exists.",
                 )
-            if appointment.pms_sync_status == PmsSyncStatus.SYNCED:
+            if (
+                appointment.pms_sync_status == PmsSyncStatus.SYNCED
+                and appointment.pms_sync_operation == operation
+            ):
                 return PmsSyncResult(
                     appointment_id=appointment.id,
                     status=PmsSyncStatus.SYNCED,
                     attempted=False,
                 )
+            if appointment.pms_sync_operation != operation:
+                appointment.pms_sync_operation = operation
+                appointment.pms_sync_status = PmsSyncStatus.PENDING
+                appointment.pms_sync_attempts = 0
+                appointment.pms_last_attempt_at = None
+                appointment.pms_synced_at = None
+                appointment.pms_last_error = None
             if appointment.pms_sync_attempts >= self._settings.pms_retry_max_attempts:
                 appointment.pms_sync_status = PmsSyncStatus.FAILED
                 appointment.pms_last_error = (
@@ -77,7 +89,8 @@ class PmsSyncService:
                 try:
                     writeback = await self._adapter_factory(session).write_appointment(
                         appointment,
-                        idempotency_key=f"pms:{appointment.id}",
+                        operation=operation,
+                        idempotency_key=f"pms:{appointment.id}:{operation}",
                     )
                 except Exception as exc:
                     detail = self._safe_error(exc)
@@ -98,6 +111,7 @@ class PmsSyncService:
                         "pms_sync_failed",
                         appointment_id=str(appointment.id),
                         provider=self._settings.pms_provider,
+                        operation=operation,
                         status=appointment.pms_sync_status.value,
                         attempts=appointment.pms_sync_attempts,
                         exception_type=type(exc).__name__,
@@ -116,6 +130,7 @@ class PmsSyncService:
                         "pms_sync_succeeded",
                         appointment_id=str(appointment.id),
                         provider=writeback.provider,
+                        operation=operation,
                         external_reference=writeback.external_reference,
                         replayed=writeback.replayed,
                         attempts=appointment.pms_sync_attempts,
@@ -127,6 +142,7 @@ class PmsSyncService:
             value=1.0,
             labels={
                 "provider": self._settings.pms_provider,
+                "operation": operation,
                 "status": result.status.value,
                 "attempted": result.attempted,
             },
@@ -139,15 +155,18 @@ class PmsSyncService:
 
         async with session_scope() as session:
             candidates = await PmsRepository(session).retry_candidates(limit=limit)
-            candidate_ids = [
-                appointment.id
+            pending_operations = [
+                (appointment.id, appointment.pms_sync_operation or "create")
                 for appointment in candidates
                 if self._retry_is_due(
                     attempts=appointment.pms_sync_attempts,
                     last_attempt_at=appointment.pms_last_attempt_at,
                 )
             ]
-        return [await self.sync_appointment(appointment_id) for appointment_id in candidate_ids]
+        return [
+            await self.sync_appointment(appointment_id, operation=operation)
+            for appointment_id, operation in pending_operations
+        ]
 
     def _build_adapter(self, session: AsyncSession) -> PmsAdapter:
         if self._settings.pms_provider.casefold() == "mock":

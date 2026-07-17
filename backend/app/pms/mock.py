@@ -19,10 +19,14 @@ class MockPmsAdapter:
         self._session = session
 
     async def write_appointment(
-        self, appointment: Appointment, *, idempotency_key: str
+        self,
+        appointment: Appointment,
+        *,
+        operation: str,
+        idempotency_key: str,
     ) -> PmsWritebackResult:
         statement = select(MockPmsAppointment).where(
-            MockPmsAppointment.appointment_id == appointment.id
+            MockPmsAppointment.idempotency_key == idempotency_key
         )
         existing = await self._session.scalar(statement)
         if existing is not None:
@@ -34,9 +38,11 @@ class MockPmsAdapter:
 
         receipt = MockPmsAppointment(
             appointment_id=appointment.id,
+            operation=operation,
             idempotency_key=idempotency_key,
             payload={
                 "appointment_id": str(appointment.id),
+                "operation": operation,
                 "patient_id": str(appointment.patient_id),
                 "practitioner_id": str(appointment.practitioner_id),
                 "branch_id": str(appointment.branch_id),

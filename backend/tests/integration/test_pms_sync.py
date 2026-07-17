@@ -79,3 +79,66 @@ async def test_mock_pms_failure_retries_idempotently() -> None:
     replay = await PmsSyncService(settings=settings).sync_appointment(appointment_id)
     assert replay.status == PmsSyncStatus.SYNCED
     assert replay.attempted is False
+
+
+@pytest.mark.asyncio
+async def test_mock_pms_records_each_appointment_lifecycle_operation() -> None:
+    await seed()
+    async with session_scope() as session:
+        patient = await session.scalar(select(Patient).limit(1))
+        practitioner = await session.scalar(select(Practitioner).limit(1))
+        branch = await session.scalar(select(Branch).limit(1))
+        appointment_type = await session.scalar(select(AppointmentType).limit(1))
+        assert patient and practitioner and branch and appointment_type
+        start_time = datetime.now(UTC) + timedelta(
+            days=365, minutes=uuid4().int % 1_000_000
+        )
+        appointment = Appointment(
+            patient_id=patient.id,
+            practitioner_id=practitioner.id,
+            branch_id=branch.id,
+            appointment_type_id=appointment_type.id,
+            start_time=start_time,
+            end_time=start_time + timedelta(minutes=30),
+            status=AppointmentStatus.BOOKED,
+            pms_sync_status=PmsSyncStatus.PENDING,
+        )
+        session.add(appointment)
+        await session.flush()
+        appointment_id = appointment.id
+
+    sync = PmsSyncService()
+    await sync.sync_appointment(appointment_id, operation="create")
+
+    async with session_scope() as session:
+        appointment = await session.get(Appointment, appointment_id)
+        assert appointment is not None
+        appointment.start_time += timedelta(days=1)
+        appointment.end_time += timedelta(days=1)
+        appointment.status = AppointmentStatus.BOOKED
+
+    await sync.sync_appointment(appointment_id, operation="reschedule")
+
+    async with session_scope() as session:
+        appointment = await session.get(Appointment, appointment_id)
+        assert appointment is not None
+        appointment.status = AppointmentStatus.CANCELLED
+
+    await sync.sync_appointment(appointment_id, operation="cancel")
+
+    async with session_scope() as session:
+        receipts = list(
+            (
+                await session.scalars(
+                    select(MockPmsAppointment)
+                    .where(MockPmsAppointment.appointment_id == appointment_id)
+                )
+            ).all()
+        )
+
+    receipts_by_operation = {receipt.operation: receipt for receipt in receipts}
+    assert set(receipts_by_operation) == {"create", "reschedule", "cancel"}
+    assert (
+        receipts_by_operation["cancel"].payload["status"]
+        == AppointmentStatus.CANCELLED.value
+    )

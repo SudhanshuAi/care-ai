@@ -147,7 +147,9 @@ class AppointmentService:
             await record_booking_success(replay=bool(response.idempotent_replay))
             if not response.idempotent_replay:
                 try:
-                    await self._pms_sync.sync_appointment(response.appointment_id)
+                    await self._pms_sync.sync_appointment(
+                        response.appointment_id, operation="create"
+                    )
                 except Exception as exc:
                     # A committed booking must never fail because a downstream
                     # PMS worker or database is unavailable. It remains pending
@@ -243,6 +245,18 @@ class AppointmentService:
                     "appointment_rescheduled", appointment_id=str(appointment.id)
                 )
         await record_reschedule_success(replay=bool(response.idempotent_replay))
+        if not response.idempotent_replay:
+            try:
+                await self._pms_sync.sync_appointment(
+                    response.appointment_id, operation="reschedule"
+                )
+            except Exception as exc:
+                logger.exception(
+                    "pms_sync_post_commit_error",
+                    appointment_id=str(response.appointment_id),
+                    operation="reschedule",
+                    exception_type=type(exc).__name__,
+                )
         return response
 
     async def cancel(
@@ -295,6 +309,18 @@ class AppointmentService:
                     "appointment_cancelled", appointment_id=str(appointment.id)
                 )
         await record_cancel_success(replay=bool(response.idempotent_replay))
+        if not response.idempotent_replay:
+            try:
+                await self._pms_sync.sync_appointment(
+                    response.appointment_id, operation="cancel"
+                )
+            except Exception as exc:
+                logger.exception(
+                    "pms_sync_post_commit_error",
+                    appointment_id=str(response.appointment_id),
+                    operation="cancel",
+                    exception_type=type(exc).__name__,
+                )
         return response
 
     async def list_for_patient(

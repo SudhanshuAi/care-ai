@@ -21,6 +21,10 @@ class PmsWritebackResult:
 
 class PmsAdapter(Protocol):
     async def write_appointment(
-        self, appointment: Appointment, *, idempotency_key: str
+        self,
+        appointment: Appointment,
+        *,
+        operation: str,
+        idempotency_key: str,
     ) -> PmsWritebackResult:
-        """Persist the appointment in the downstream PMS."""
+        """Persist one idempotent appointment lifecycle event downstream."""

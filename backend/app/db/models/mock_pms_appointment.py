@@ -32,8 +32,8 @@ class MockPmsAppointment(UUIDPkMixin, Base):
         PG_UUID(as_uuid=True),
         ForeignKey("appointments.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
     )
+    operation: Mapped[str] = mapped_column(String(32), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(
         String(128), nullable=False, unique=True
     )
