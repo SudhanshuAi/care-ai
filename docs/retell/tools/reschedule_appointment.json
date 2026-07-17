@@ -1,11 +1,11 @@
 {
   "name": "reschedule_appointment",
   "type": "custom",
-  "description": "Move an existing booked appointment to a new live-checked slot. Re-search availability first if the caller changed preferences. Copy practitioner_id, branch_id, appointment_type_id, and start_time UNCHANGED from ONE slot object in the most recent search_availability result -- start_time is UTC and looks nothing like the spoken local time (start_time_display); never reconstruct, retime, or guess it. Mention a cancellation fee ONLY when the tool response says cancellation_fee.applicable is true.",
+  "description": "Move an existing booked appointment to a new live-checked slot. MANDATORY: call search_availability for the caller's newly requested day/time FIRST, in this same turn sequence, before calling this tool -- never call reschedule_appointment reusing practitioner_id/branch_id/appointment_type_id/start_time from the appointment being replaced or from an earlier search; doing so returns a conflict error. Copy practitioner_id, branch_id, appointment_type_id, and start_time UNCHANGED from ONE slot object in that fresh search_availability result -- start_time is UTC and looks nothing like the spoken local time (start_time_display); never reconstruct, retime, or guess it. If the returned slot's start_time_display falls on a different day than the caller requested, say the actual day/date returned, not the day the caller asked for. Mention a cancellation fee ONLY when the tool response says cancellation_fee.applicable is true.",
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
-  "execution_message_description": "Short holding phrase while rescheduling.",
+  "execution_message_description": "Exactly one short phrase, e.g. 'One moment.' / 'Just a second.' (or Hindi: 'Ek pal.'). Never say 'rescheduling', 'moving', or name the appointment.",
   "timeout_ms": 15000,
   "parameters": {
     "type": "object",

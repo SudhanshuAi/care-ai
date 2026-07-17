@@ -1,11 +1,11 @@
 {
   "name": "search_availability",
   "type": "custom",
-  "description": "Search LIVE appointment availability from the database. NEVER invent slots from memory. Re-run this tool whenever the caller changes date, time window, doctor, specialty, or branch. Set earliest_only=true when the caller asks for the earliest slot (search across practitioners and branches when filters allow). Each returned slot includes start_time_display (e.g. 'Sat, 18 Jul, 9:00 AM') already converted to the branch's local time -- speak that string verbatim. Never compute AM/PM or local time yourself from start_time, which is UTC.",
+  "description": "Search LIVE appointment availability from the database. NEVER invent slots from memory. Re-run this tool whenever the caller changes date, time window, doctor, specialty, or branch. When the caller names a specific day (a weekday, 'tomorrow', or a date), resolve it to appointment_date and pass it -- do not rely on earliest_only alone, which searches forward from right now and can silently return a slot on a different day than requested. Set earliest_only=true only when the caller asks for the earliest/soonest slot with no specific day in mind (search across practitioners and branches when filters allow). Each returned slot includes start_time_display (e.g. 'Sat, 18 Jul, 9:00 AM') already converted to the branch's local time -- speak that string verbatim, even if its day does not match what the caller asked for; never relabel it to the requested day. Never compute AM/PM or local time yourself from start_time, which is UTC.",
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
-  "execution_message_description": "Natural holding phrase while checking live availability, e.g. 'One moment, checking that now' / 'Ek second, main check karti hoon'.",
+  "execution_message_description": "Exactly one short phrase matched to the caller's language, e.g. 'One moment.' / 'Just a second.' (English) or 'Ek pal.' (Hindi). Never say 'searching', 'checking availability', 'database', or name the doctor/branch/date being searched.",
   "timeout_ms": 15000,
   "parameters": {
     "type": "object",

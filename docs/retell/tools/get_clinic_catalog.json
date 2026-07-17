@@ -5,7 +5,7 @@
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
-  "execution_message_description": "Short holding phrase while loading clinic schedule options.",
+  "execution_message_description": "Exactly one short phrase, e.g. 'One moment.' / 'Just a second.' (or Hindi: 'Ek pal.'). Never say 'loading', 'catalog', 'database', or list what is being fetched.",
   "timeout_ms": 10000,
   "parameters": {
     "type": "object",

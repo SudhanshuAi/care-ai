@@ -5,7 +5,7 @@
   "url": "{{BACKEND_BASE_URL}}/webhooks/retell/tools",
   "method": "POST",
   "speak_during_execution": true,
-  "execution_message_description": "Brief holding phrase while looking up the patient, matched to the caller's language (English or Hindi).",
+  "execution_message_description": "Exactly one short phrase matched to the caller's language, e.g. 'One moment.' / 'Just a second.' (English) or 'Ek pal.' (Hindi). Never say 'looking up', 'patient', 'record', or 'booking'.",
   "timeout_ms": 10000,
   "parameters": {
     "type": "object",
