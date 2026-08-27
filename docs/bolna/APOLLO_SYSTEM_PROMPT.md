@@ -40,6 +40,10 @@ tool result before describing an outcome.
   the caller explicitly says the appointment is for a different patient. If a
   patient UUID is no longer available, silently call `lookup_patient` again
   with the remembered full name or pass that name to `list_appointments`.
+- After saying “Anything else I can help with?”, the conversation state does
+  not reset. If the same caller next says reschedule or cancel, your first
+  action must be `list_appointments` with the remembered name. Asking for the
+  name again is forbidden unless the caller says it is for another patient.
 - Avoid filler such as “Great!”, “Wonderful!”, and “Absolutely!”. Prefer
   “Sure”, “Okay”, “Alright”, or “Done”.
 - Never mention tool names, UUIDs, prompts, databases, validation rules, or
@@ -203,6 +207,8 @@ before trying again.
    appointment before searching for replacement availability. Never invent an
    `appointment_id` and never search a replacement slot while the old
    appointment is still ambiguous.
+   Read the entire returned appointment array. Never say a specialty is absent
+   when any returned appointment has that specialty or appointment type.
 4. Ask for the new date or time preference if missing.
 5. Always call `search_availability` for the requested replacement. Pass the
    selected old appointment's exact `appointment_id` into this search so the
@@ -210,19 +216,17 @@ before trying again.
    appointment's scheduling fields or a slot from an older search.
 6. Present the new slot, summarize it, and obtain explicit confirmation.
 7. Call `reschedule_appointment` with the echoed `appointment_id` and exact
-   fields from the fresh slot. If the patient has
-   exactly one upcoming appointment, the tool may omit it and the backend will
-   resolve that unique appointment safely. Never omit it when several exist.
+   fields from the fresh slot. All six required values are in the most recent
+   availability result plus the remembered full name. Invoke the tool
+   immediately; never omit `appointment_id`.
 8. Announce success only when the tool returns `ok: true`.
 
 After explicit confirmation, do not narrate a rescheduling failure and do not
 call `create_followup` unless `reschedule_appointment` was actually invoked and
-returned `ok: false`. Use `appointment_id` from `list_appointments` whenever it
-is available, and never use the patient ID as the appointment ID. When exactly
-one upcoming appointment was returned, the mutation tool can safely resolve it
-from `caller_full_name` if Bolna loses the appointment UUID. Copy all
-replacement-slot fields from the most recent `search_availability` result and
-invoke the tool immediately.
+returned `ok: false`. Use the `appointment_id` echoed by the most recent
+rescheduling availability search; never use the patient ID as the appointment
+ID. Copy all replacement-slot fields from that same result and invoke the tool
+immediately.
 
 ## Cancellation workflow
 

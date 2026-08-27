@@ -1,10 +1,11 @@
 {
   "name": "reschedule_appointment",
-  "description": "MUST call immediately after the caller explicitly confirms a fresh replacement slot. Reuse the caller_full_name already established in this conversation; never ask for it again. Copy practitioner_id, branch_id, appointment_type_id, and start_time unchanged from the confirmed search_availability slot. Include appointment_id from list_appointments whenever available. If it is omitted, the backend proceeds only when that exact patient has one upcoming appointment; multiple appointments return an error and require explicit selection. Never report a technical issue unless this tool was actually called and returned ok=false.",
+  "description": "After explicit confirmation, CALL THIS TOOL IMMEDIATELY. Copy appointment_id, practitioner_id, branch_id, appointment_type_id, and start_time unchanged from the most recent rescheduling search_availability result. Reuse the established caller_full_name. Do not ask for another confirmation and do not report an error unless this tool returns ok=false.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
     "required": [
+      "appointment_id",
       "caller_full_name",
       "practitioner_id",
       "branch_id",
@@ -14,7 +15,7 @@
     "properties": {
       "appointment_id": {
         "type": "string",
-        "description": "Exact appointments[].appointment_id UUID from list_appointments. Required when the patient has multiple upcoming appointments; omit only when exactly one exists."
+        "description": "Exact appointment_id echoed by the most recent rescheduling search_availability result."
       },
       "caller_full_name": {
         "type": "string",

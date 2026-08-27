@@ -1,6 +1,6 @@
 {
   "name": "list_appointments",
-  "description": "MUST call when the identified patient asks to reschedule or cancel. Reuse the caller_full_name already established earlier in the conversation; never ask for it again. Include patient_id when still available, otherwise the backend permits only an exact unique full-name match. Returns upcoming BOOKED appointments and their real appointment IDs; never invent an appointment_id.",
+  "description": "MUST call immediately when an already identified patient asks to reschedule or cancel; silently reuse caller_full_name and never ask for it again. Include patient_id when available. Read every returned appointment before responding. Never claim an appointment or specialty is absent unless no returned item matches it. Returns upcoming BOOKED appointments and real appointment IDs; never invent an ID.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",

@@ -73,6 +73,7 @@ def test_mutations_require_slot_ids_and_allow_safe_appointment_resolution() -> N
     create_properties = contracts["create_appointment"]["parameters"]["properties"]
     assert "patient_id" not in create_properties
     assert set(contracts["reschedule_appointment"]["parameters"]["required"]) >= {
+        "appointment_id",
         "caller_full_name",
         "practitioner_id",
         "branch_id",
