@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -32,9 +32,7 @@ class _StubPatientService:
         )
 
     async def lookup_by_name(self, name: str) -> PatientLookupResponse:
-        return PatientLookupResponse(
-            match_count=0, requires_disambiguation=False, patients=[]
-        )
+        return PatientLookupResponse(match_count=0, requires_disambiguation=False, patients=[])
 
 
 @pytest.mark.asyncio
@@ -92,9 +90,7 @@ async def test_lookup_falls_back_to_name_when_phone_misses() -> None:
 
     class _Stub:
         async def lookup_by_phone(self, phone: str) -> PatientLookupResponse:
-            return PatientLookupResponse(
-                match_count=0, requires_disambiguation=False, patients=[]
-            )
+            return PatientLookupResponse(match_count=0, requires_disambiguation=False, patients=[])
 
         async def lookup_by_name(self, name: str) -> PatientLookupResponse:
             return PatientLookupResponse(
@@ -164,19 +160,37 @@ async def test_bolna_booking_resolves_exact_unique_name_when_id_is_lost() -> Non
     dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
     dispatcher._patient_service = _Stub()  # type: ignore[method-assign]
 
-    resolved = await dispatcher._resolve_patient_id(
-        {"caller_full_name": "rahul verma"}, None
-    )
+    resolved = await dispatcher._resolve_patient_id({"caller_full_name": "rahul verma"}, None)
 
     assert resolved == patient_id
+
+
+@pytest.mark.asyncio
+async def test_reschedule_search_echoes_selected_appointment_id() -> None:
+    class _AvailabilityResponse:
+        def model_dump(self, *, mode: str) -> dict[str, object]:
+            assert mode == "json"
+            return {"slots": [], "queried_at": datetime.now(UTC).isoformat()}
+
+    appointment_id = uuid4()
+    dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
+    dispatcher._availability_service.search = AsyncMock(return_value=_AvailabilityResponse())
+
+    result = await dispatcher._search_availability(
+        {
+            "appointment_id": str(appointment_id),
+            "appointment_type_id": str(uuid4()),
+            "earliest_only": True,
+        }
+    )
+
+    assert result["appointment_id"] == str(appointment_id)
 
 
 def test_bolna_chat_followup_gets_isolated_synthetic_call_context() -> None:
     dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
 
-    context = dispatcher._resolve_followup_call_context(
-        {"phone": "+91-98765-10001"}, None
-    )
+    context = dispatcher._resolve_followup_call_context({"phone": "+91-98765-10001"}, None)
 
     assert context.call_id is not None
     assert context.call_id.startswith("bolna:chat:")
@@ -209,9 +223,7 @@ def test_missing_patient_error_instructs_agent_to_identify_patient() -> None:
         "patient_id is required and must be a UUID from lookup_patient / "
         "get_clinic_catalog / search_availability — not a name or phone."
     )
-    detail = RetellToolDispatcher._recovery_detail(
-        "create_appointment", raw_detail
-    )
+    detail = RetellToolDispatcher._recovery_detail("create_appointment", raw_detail)
 
     assert "Do NOT retry create_appointment" in detail
     assert "lookup_patient" in detail

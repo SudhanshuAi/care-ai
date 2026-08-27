@@ -495,6 +495,14 @@ class RetellToolDispatcher:
         }
 
     async def _search_availability(self, args: dict[str, Any]) -> dict[str, Any]:
+        # During a reschedule, carry the selected old appointment through the
+        # replacement search. That makes its UUID part of the most recent tool
+        # result when Bolna invokes the mutation after verbal confirmation.
+        appointment_id = (
+            self._require_appointment_id(args.get("appointment_id"))
+            if args.get("appointment_id")
+            else None
+        )
         request = AvailabilitySearchRequest(
             appointment_type_id=await self._resolve_appointment_type_id(args),
             branch_id=await self._optional_uuid(
@@ -519,7 +527,10 @@ class RetellToolDispatcher:
             limit=self._optional_int(args.get("limit"), default=5),
         )
         response = await self._availability_service.search(request)
-        return response.model_dump(mode="json")
+        result = response.model_dump(mode="json")
+        if appointment_id is not None:
+            result["appointment_id"] = str(appointment_id)
+        return result
 
     async def _create_appointment(
         self,

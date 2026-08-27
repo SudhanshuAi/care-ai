@@ -84,3 +84,6 @@ def test_mutations_require_slot_ids_and_allow_safe_appointment_resolution() -> N
     list_parameters = contracts["list_appointments"]["parameters"]
     assert list_parameters["required"] == ["caller_full_name"]
     assert "patient_id" in list_parameters["properties"]
+    search_parameters = contracts["search_availability"]["parameters"]
+    assert "appointment_id" in search_parameters["properties"]
+    assert "appointment_id" in contracts["search_availability"]["value"]["param"]

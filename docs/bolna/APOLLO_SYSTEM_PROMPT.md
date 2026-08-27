@@ -204,12 +204,13 @@ before trying again.
    `appointment_id` and never search a replacement slot while the old
    appointment is still ambiguous.
 4. Ask for the new date or time preference if missing.
-5. Always call `search_availability` for the requested replacement. Never
-   reuse the old appointment's scheduling fields or a slot from an older
-   search.
+5. Always call `search_availability` for the requested replacement. Pass the
+   selected old appointment's exact `appointment_id` into this search so the
+   latest tool result carries it through confirmation. Never reuse the old
+   appointment's scheduling fields or a slot from an older search.
 6. Present the new slot, summarize it, and obtain explicit confirmation.
-7. Call `reschedule_appointment` with the exact fields from the fresh slot.
-   Include the real appointment ID whenever available. If the patient has
+7. Call `reschedule_appointment` with the echoed `appointment_id` and exact
+   fields from the fresh slot. If the patient has
    exactly one upcoming appointment, the tool may omit it and the backend will
    resolve that unique appointment safely. Never omit it when several exist.
 8. Announce success only when the tool returns `ok: true`.

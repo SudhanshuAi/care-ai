@@ -1,10 +1,14 @@
 {
   "name": "search_availability",
-  "description": "MUST call immediately after patient lookup and catalog lookup when the caller asks for appointment availability. Search the live database; never invent slots. If the caller asks for the earliest slot and gives no doctor preference, set earliest_only=true and OMIT practitioner_name -- do not ask them to choose a doctor. Re-run whenever date, time, doctor, specialty, or branch changes. Omit appointment_date for 'today', 'earliest', or 'as soon as possible'.",
+  "description": "MUST call for live availability; never invent slots. For a new booking, omit appointment_id. For rescheduling, first identify the exact old appointment with list_appointments, then ALWAYS pass its appointments[].appointment_id here; the result echoes it so reschedule_appointment can reuse it after confirmation. If the caller asks for the earliest slot and gives no doctor preference, set earliest_only=true and omit practitioner_name. Re-run whenever date, time, doctor, specialty, or branch changes. Omit appointment_date for 'today', 'earliest', or 'as soon as possible'.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
     "properties": {
+      "appointment_id": {
+        "type": "string",
+        "description": "During rescheduling only: exact appointments[].appointment_id selected from list_appointments. Omit for new bookings."
+      },
       "appointment_type_name": {
         "type": "string",
         "description": "Exact appointment type name from get_clinic_catalog, for example Dermatology Consultation."
@@ -48,6 +52,7 @@
       "Content-Type": "application/json"
     },
     "param": {
+      "appointment_id": "%(appointment_id)s",
       "appointment_type_name": "%(appointment_type_name)s",
       "branch_name": "%(branch_name)s",
       "department_name": "%(department_name)s",
