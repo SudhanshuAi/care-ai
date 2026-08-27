@@ -61,6 +61,7 @@ Dashboard → **Agents** → Create / Edit:
 | Interruption sensitivity | Medium–High |
 | Responsiveness | High |
 | Backchannel | On (optional) |
+| Boosted keywords | See list below — fixes branch/doctor names getting mis-heard |
 | Reminder message | Soft nudge after ~10s silence |
 | Webhook | `https://YOUR_HOST/webhooks/retell/call-ended` |
 
@@ -69,6 +70,16 @@ Dashboard → **Agents** → Create / Edit:
 - **Interruption sensitivity Medium–High:** assignment requires natural barge-in without being hypersensitive to room noise.
 - **Multilingual STT + ElevenLabs TTS:** satisfies English / Hindi / mid-call code-switching without a hardcoded dictionary.
 - **Speak during execution on tools:** masks tool latency with a holding phrase from the prompt.
+- **Boosted keywords:** clinic-specific proper nouns (branch/doctor/department names) are not in a
+  generic STT vocabulary and get mis-transcribed — e.g. "Koramangala" coming back as garbled
+  Devanagari when the caller says it in Hinglish. Dashboard → **Agent → Speech Settings → Boosted
+  Keywords** (up to 100 terms) — add at minimum:
+  `Koramangala, Indiranagar, Sunrise Multispecialty Clinic, Maya, Dermatology, Pediatrics,
+  Physiotherapy, General Dentistry, Sanjay Gupta, Ananya Rao, Karthik Iyer, Meera Nair, Priya
+  Sharma`. Keep this list in sync with `agent_config.json` → `speech_settings.boosted_keywords` and
+  with the live clinic catalog (new branches/doctors added later should be added here too). If short
+  one-word answers like "yes"/"haan" also get dropped, also try **Denoising mode → No Denoising** in
+  the same panel.
 
 ## 4. Phone number
 

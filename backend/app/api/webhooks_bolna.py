@@ -31,6 +31,7 @@ from app.core.logging import get_logger
 from app.core.observability import PROVIDER_BOLNA, correlation_response_headers
 from app.deps import get_db
 from app.repositories.call_repository import CallRepository
+from app.services.conversation_state_service import ConversationStateService
 
 router = APIRouter(prefix="/webhooks/bolna", tags=["bolna"])
 logger = get_logger(__name__)
@@ -45,8 +46,12 @@ _COMPLETED_STATUSES = frozenset(
         "canceled",
         "cancelled",
         "stopped",
+        "balance-low",
+        "error",
     }
 )
+_DISCONNECTED_STATUSES = frozenset({"call-disconnected"})
+_TERMINAL_STATUSES = _COMPLETED_STATUSES | _DISCONNECTED_STATUSES
 
 
 async def _enforce_auth(request: Request, settings: Settings) -> bytes:
@@ -132,7 +137,7 @@ async def bolna_call_status(
         logger.info("bolna_call_status_ignored", reason="missing_execution_id")
         return {"ok": True, "updated": False}
 
-    if status and status not in _COMPLETED_STATUSES:
+    if status and status not in _TERMINAL_STATUSES:
         logger.info(
             "bolna_call_status_ignored",
             reason="non_terminal_status",
@@ -141,11 +146,13 @@ async def bolna_call_status(
         )
         return {"ok": True, "updated": False, "status": status}
 
-    async with db.begin():
-        call = await CallRepository(db).mark_completed(external_id)
+    state = await ConversationStateService(db, CallRepository(db)).complete(
+        retell_call_id=external_id,
+        disconnected=status in _DISCONNECTED_STATUSES,
+    )
     return {
         "ok": True,
-        "updated": call is not None,
-        "call_id": str(call.id) if call else None,
+        "updated": state is not None,
+        "call_id": str(state.database_call_id) if state else None,
         "status": status or None,
     }

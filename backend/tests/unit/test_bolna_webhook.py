@@ -3,8 +3,13 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.api.webhooks_bolna import _DISCONNECTED_STATUSES
 from app.core.config import Settings, get_settings
 from app.main import app
+
+
+def test_bolna_call_disconnected_status_is_resumable() -> None:
+    assert "call-disconnected" in _DISCONNECTED_STATUSES
 
 
 @pytest.mark.asyncio

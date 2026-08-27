@@ -1,14 +1,15 @@
 {
   "name": "create_followup",
-  "description": "Log a human-callback request, clinical concern, or other issue outside booking. Tell the caller someone will call them back — NEVER claim an immediate live transfer.",
-  "pre_call_message": "I'll note that down for the team.",
+  "description": "Use for an explicit human request, a non-emergency clinical concern, an unmatched patient, repeated recognition failure, or another unsupported request. This creates a callback only. Never claim that a live transfer is happening.",
+  "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
-    "required": ["category", "notes"],
+    "required": ["category", "notes", "call_sid"],
     "properties": {
       "category": {
         "type": "string",
-        "description": "human_requested, clinical_concern, or other"
+        "enum": ["human_requested", "clinical_concern", "other"],
+        "description": "Use human_requested for a person, clinical_concern for a non-emergency medical question, and other for unmatched patients or unsupported requests."
       },
       "notes": { "type": "string" },
       "patient_id": { "type": "string" },

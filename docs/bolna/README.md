@@ -24,5 +24,6 @@ curl -X POST "http://localhost:8000/webhooks/bolna/tools/lookup_patient" \
 
 ## Files
 
+- [APOLLO_SYSTEM_PROMPT.md](APOLLO_SYSTEM_PROMPT.md) — Bolna-specific prompt for the assignment prototype
 - [DASHBOARD_CONFIGURATION.md](DASHBOARD_CONFIGURATION.md) — Bolna agent setup
 - [tools/](tools/) — pasteable Custom Function JSON for each tool

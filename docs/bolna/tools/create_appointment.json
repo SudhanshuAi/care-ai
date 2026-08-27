@@ -1,10 +1,17 @@
 {
   "name": "create_appointment",
-  "description": "Book an appointment after the caller confirmed branch, doctor, date, and time. ALWAYS include caller_full_name. patient_id MUST be the UUID from lookup_patient — never a name or 'new_patient'. start_time MUST include a timezone offset.",
-  "pre_call_message": "Booking that for you now.",
+  "description": "Use only after explicit caller confirmation to create an appointment from one exact slot in the most recent search_availability result. Copy patient_id from lookup_patient and practitioner_id, branch_id, appointment_type_id, and start_time unchanged from that slot. Never use names, placeholders, or an older slot in place of IDs.",
+  "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
-    "required": ["patient_id", "caller_full_name", "start_time"],
+    "required": [
+      "patient_id",
+      "caller_full_name",
+      "practitioner_id",
+      "branch_id",
+      "appointment_type_id",
+      "start_time"
+    ],
     "properties": {
       "patient_id": {
         "type": "string",

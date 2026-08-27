@@ -168,7 +168,7 @@ class RetellToolDispatcher:
             elif name == "create_followup":
                 result = await self._create_followup(args, call)
             else:
-                raise ValidationError(f"Unknown Retell tool: {name}")
+                raise ValidationError(f"Unknown voice tool: {name}")
             await self._conversation_state.record_tool_result(
                 call=conversation,
                 tool_name=name,
@@ -231,7 +231,7 @@ class RetellToolDispatcher:
                 event=f"{self._provider}_tool_domain_error",
             )
         except (ValueError, KeyError, TypeError) as exc:
-            # Retell LLMs often invent names/phones where UUIDs are required.
+            # Voice LLMs sometimes invent names/phones where UUIDs are required.
             # Surface those as tool errors (HTTP 200) so the agent can recover
             # instead of a bare 500 from the webhook.
             detail = str(exc) or "Invalid tool arguments."
@@ -439,7 +439,7 @@ class RetellToolDispatcher:
     async def _get_clinic_catalog(self) -> dict[str, Any]:
         """Voice-side helper so the LLM can map spoken names to UUIDs.
 
-        Not part of the stable `/tools` REST surface; Retell-only.
+        Not part of the stable `/tools` REST surface; voice-provider helper.
         """
 
         branches = list(
@@ -612,7 +612,7 @@ class RetellToolDispatcher:
         self, args: dict[str, Any], call: RetellCallContext | None
     ) -> dict[str, Any]:
         if call is None or not call.call_id:
-            raise ValidationError("create_followup requires Retell call context.")
+            raise ValidationError("create_followup requires voice call context.")
 
         phone = (args.get("phone") or call.from_number or "unknown").strip()
         direction = (
@@ -847,12 +847,14 @@ class RetellToolDispatcher:
             raise ValidationError(f"{field} must include a timezone offset.")
         return parsed
 
-    @staticmethod
     def _idempotency_key(
-        tool: str, call: RetellCallContext | None, args: dict[str, Any]
+        self, tool: str, call: RetellCallContext | None, args: dict[str, Any]
     ) -> str:
-        retell_call_id = call.call_id if call and call.call_id else "anonymous"
+        call_id = call.call_id if call and call.call_id else "anonymous"
+        provider_prefix = f"{self._provider}:"
+        if call_id.startswith(provider_prefix):
+            call_id = call_id[len(provider_prefix) :]
         fingerprint = hashlib.sha256(
             json.dumps(args, sort_keys=True, default=str).encode("utf-8")
         ).hexdigest()[:24]
-        return f"retell:{retell_call_id}:{tool}:{fingerprint}"
+        return f"{self._provider}:{call_id}:{tool}:{fingerprint}"

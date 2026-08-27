@@ -1,7 +1,7 @@
 {
   "name": "search_availability",
   "description": "Search LIVE appointment availability from the database. NEVER invent slots. Re-run whenever the caller changes date, time, doctor, specialty, or branch. Set earliest_only=true for earliest-slot requests. Leave appointment_date blank for 'today'/'earliest available' requests -- the backend uses the real current date; do not compute or guess it yourself.",
-  "pre_call_message": "One moment, checking that now.",
+  "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
     "properties": {

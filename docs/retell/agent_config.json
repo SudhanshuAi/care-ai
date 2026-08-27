@@ -18,7 +18,22 @@
     "reminder_trigger_ms": 10000,
     "reminder_max_count": 1,
     "end_call_after_silence_ms": 45000,
-    "notes": "Retell VAD handles barge-in. Medium-high interruption sensitivity keeps the agent stoppable without cutting off on brief ambient noise."
+    "boosted_keywords": [
+      "Koramangala",
+      "Indiranagar",
+      "Sunrise Multispecialty Clinic",
+      "Maya",
+      "Dermatology",
+      "Pediatrics",
+      "Physiotherapy",
+      "General Dentistry",
+      "Sanjay Gupta",
+      "Ananya Rao",
+      "Karthik Iyer",
+      "Meera Nair",
+      "Priya Sharma"
+    ],
+    "notes": "Retell VAD handles barge-in. Medium-high interruption sensitivity keeps the agent stoppable without cutting off on brief ambient noise. Boosted keywords bias the STT toward clinic-specific proper nouns (branch names, doctor names, departments) that generic ASR vocab otherwise mis-hears, e.g. 'Koramangala' getting transcribed as garbled Devanagari."
   },
   "stt": {
     "provider": "retell_managed",

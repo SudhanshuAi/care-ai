@@ -1,9 +1,10 @@
 {
   "name": "list_appointments",
   "description": "List a patient's appointments (upcoming BOOKED ones by default). ALWAYS call this to get the real appointment_id before reschedule_appointment or cancel_appointment when the caller has not already given you a UUID from this conversation. Never invent or guess an appointment_id.",
-  "pre_call_message": "One moment, pulling up your appointments.",
+  "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
+    "required": ["patient_id"],
     "properties": {
       "patient_id": {
         "type": "string",
@@ -12,6 +13,14 @@
       "upcoming_only": {
         "type": "boolean",
         "description": "Defaults to true: only future booked appointments."
+      },
+      "from_number": {
+        "type": "string",
+        "description": "Inbound caller ID from context {from_number}."
+      },
+      "call_sid": {
+        "type": "string",
+        "description": "Bolna/telephony call id from context {call_sid}."
       }
     }
   },
@@ -25,7 +34,9 @@
     },
     "param": {
       "patient_id": "%(patient_id)s",
-      "upcoming_only": "%(upcoming_only)s"
+      "upcoming_only": "%(upcoming_only)s",
+      "from_number": "%(from_number)s",
+      "call_sid": "%(call_sid)s"
     }
   }
 }

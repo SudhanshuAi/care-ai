@@ -1,7 +1,7 @@
 {
   "name": "get_clinic_catalog",
   "description": "Fetch live branch, department, practitioner, and appointment-type IDs and names. Call once early if you need UUIDs for branch/doctor/visit type.",
-  "pre_call_message": "One moment, loading clinic options.",
+  "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
     "properties": {

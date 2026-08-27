@@ -1,7 +1,11 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from app.adapters.bolna.schemas import normalize_bolna_invocation
 from app.adapters.bolna.security import verify_bolna_bearer
+from app.adapters.retell.dispatcher import RetellToolDispatcher
+from app.adapters.retell.schemas import RetellCallContext
 from app.core.exceptions import ValidationError
 
 
@@ -80,3 +84,15 @@ def test_verify_bolna_bearer_rejects_bad_token() -> None:
 def test_verify_bolna_bearer_requires_header() -> None:
     with pytest.raises(ValidationError, match="Missing Authorization"):
         verify_bolna_bearer(authorization_header=None, api_token="secret-token")
+
+
+def test_bolna_mutation_idempotency_key_uses_provider_prefix() -> None:
+    dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
+
+    key = dispatcher._idempotency_key(
+        "create_appointment",
+        RetellCallContext(call_id="bolna:CA123"),
+        {"patient_id": "patient-1"},
+    )
+
+    assert key.startswith("bolna:CA123:create_appointment:")
