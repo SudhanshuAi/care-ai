@@ -61,6 +61,12 @@ def test_normalize_coerces_string_booleans_from_bolna() -> None:
     assert invocation.args["earliest_only"] is True
     assert invocation.args["limit"] == 3
 
+    list_invocation = normalize_bolna_invocation(
+        "list_appointments",
+        {"caller_full_name": "Rahul Verma", "upcoming_only": "false"},
+    )
+    assert list_invocation.args["upcoming_only"] is False
+
 
 def test_normalize_discards_missing_chat_context_placeholders() -> None:
     invocation = normalize_bolna_invocation(

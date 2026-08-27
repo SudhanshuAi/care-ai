@@ -12,7 +12,7 @@ import hashlib
 import json
 from datetime import date, datetime, time
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,7 @@ from app.core.exceptions import DomainError, NotFoundError, ValidationError
 from app.core.logging import get_logger
 from app.core.metrics import Timer, record_tool_latency
 from app.core.observability import (
+    PROVIDER_BOLNA,
     PROVIDER_RETELL,
     bind_conversation_context,
     conversation_state_snapshot,
@@ -648,8 +649,7 @@ class RetellToolDispatcher:
     async def _create_followup(
         self, args: dict[str, Any], call: RetellCallContext | None
     ) -> dict[str, Any]:
-        if call is None or not call.call_id:
-            raise ValidationError("create_followup requires voice call context.")
+        call = self._resolve_followup_call_context(args, call)
 
         phone = (args.get("phone") or call.from_number or "unknown").strip()
         direction = (
@@ -686,6 +686,27 @@ class RetellToolDispatcher:
         )
         response = await self._followup_service.create(request)
         return response.model_dump(mode="json")
+
+    def _resolve_followup_call_context(
+        self, args: dict[str, Any], call: RetellCallContext | None
+    ) -> RetellCallContext:
+        """Return real voice context or isolated synthetic Bolna Chat context."""
+
+        if call is None or not call.call_id:
+            if self._provider != PROVIDER_BOLNA:
+                raise ValidationError("create_followup requires voice call context.")
+            # Bolna Chat intentionally has no telephony call SID. Create a
+            # request-scoped synthetic call so the assignment's callback flow
+            # remains testable without conflating separate chat sessions.
+            synthetic_id = current_request_id() or str(uuid4())
+            call = RetellCallContext(
+                call_id=f"bolna:chat:{synthetic_id}",
+                from_number=str(
+                    args.get("phone") or args.get("from_number") or "chat-unknown"
+                ),
+                direction="inbound",
+            )
+        return call
 
     async def _resolve_appointment_type_id(self, args: dict[str, Any]) -> UUID:
         if args.get("appointment_type_id"):

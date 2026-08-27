@@ -14,10 +14,6 @@
         "type": "string",
         "description": "Exact full name already established by lookup_patient. Reuse it silently; do not ask again."
       },
-      "upcoming_only": {
-        "type": "boolean",
-        "description": "Defaults to true: only future booked appointments."
-      },
       "from_number": {
         "type": "string",
         "description": "Inbound caller ID from context {from_number}."
@@ -39,7 +35,6 @@
     "param": {
       "patient_id": "%(patient_id)s",
       "caller_full_name": "%(caller_full_name)s",
-      "upcoming_only": "%(upcoming_only)s",
       "from_number": "%(from_number)s",
       "call_sid": "%(call_sid)s"
     }

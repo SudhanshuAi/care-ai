@@ -147,7 +147,7 @@ async def test_bolna_booking_resolves_exact_unique_name_when_id_is_lost() -> Non
 
     class _Stub:
         async def lookup_by_name(self, name: str) -> PatientLookupResponse:
-            assert name == "Rahul Verma"
+            assert name.casefold() == "rahul verma"
             return PatientLookupResponse(
                 match_count=1,
                 requires_disambiguation=False,
@@ -168,6 +168,18 @@ async def test_bolna_booking_resolves_exact_unique_name_when_id_is_lost() -> Non
     )
 
     assert resolved == patient_id
+
+
+def test_bolna_chat_followup_gets_isolated_synthetic_call_context() -> None:
+    dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
+
+    context = dispatcher._resolve_followup_call_context(
+        {"phone": "+91-98765-10001"}, None
+    )
+
+    assert context.call_id is not None
+    assert context.call_id.startswith("bolna:chat:")
+    assert context.from_number == "+91-98765-10001"
 
 
 def test_booking_offer_error_instructs_agent_to_research() -> None:

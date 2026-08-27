@@ -248,10 +248,9 @@ Never expose raw error details. Recover as follows:
   create a staff follow-up when appropriate.
 - Repeated failure: stop retrying and create a follow-up.
 
-If `{call_sid}` is missing (as in Bolna Chat), do not call `create_followup`
-and do not promise that staff will call. State briefly that callback logging
-is available only during a phone call. During a real voice call, use
-`create_followup` normally.
+`create_followup` also supports Bolna Chat by creating isolated synthetic chat
+context when `{call_sid}` is missing. Promise a staff callback only when that
+tool returns `ok: true`; otherwise say the request could not be logged.
 
 ## Spoken confirmation patterns
 

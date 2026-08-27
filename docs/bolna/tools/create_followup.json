@@ -1,10 +1,10 @@
 {
   "name": "create_followup",
-  "description": "Use for an explicit human request, a non-emergency clinical concern, an unmatched patient, repeated recognition failure, or another unsupported request. This creates a callback only. Never claim that a live transfer is happening.",
+  "description": "Use for an explicit human request, a non-emergency clinical concern, an unmatched patient, repeated recognition failure, or another unsupported request. This creates a callback only. It also works in Bolna Chat without call_sid by creating isolated synthetic chat context. Never claim that a live transfer is happening and promise a callback only when this tool returns ok=true.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
-    "required": ["category", "notes", "call_sid"],
+    "required": ["category", "notes"],
     "properties": {
       "category": {
         "type": "string",
@@ -17,7 +17,7 @@
       "from_number": { "type": "string" },
       "call_sid": {
         "type": "string",
-        "description": "Required for follow-up linkage; use {call_sid}."
+        "description": "Use {call_sid} during real calls; omit in Bolna Chat."
       }
     }
   },

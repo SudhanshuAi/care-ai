@@ -44,6 +44,23 @@ def test_pre_call_messages_are_short_and_neutral() -> None:
         assert contract["pre_call_message"] == "One moment."
 
 
+def test_parameter_mappings_are_in_schema_and_urls_are_not_markdown() -> None:
+    for contract in _contracts().values():
+        parameters = contract["parameters"]
+        properties = set(parameters.get("properties", {}))
+        required = set(parameters.get("required", []))
+        mapped = set(contract["value"].get("param", {}))
+
+        assert required <= properties
+        assert mapped <= properties
+        assert not contract["value"]["url"].startswith("[")
+
+
+def test_followup_does_not_require_phone_only_call_context() -> None:
+    followup = _contracts()["create_followup"]
+    assert set(followup["parameters"]["required"]) == {"category", "notes"}
+
+
 def test_mutations_require_ids_from_prior_tool_results() -> None:
     contracts = _contracts()
 

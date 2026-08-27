@@ -54,7 +54,7 @@ def _coerce_arg(key: str, value: Any) -> Any:
         value = _clean_optional_text(value)
         if value is None:
             return None
-    if key == "earliest_only" and isinstance(value, str):
+    if key in {"earliest_only", "upcoming_only"} and isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "y"}
     if key == "limit" and isinstance(value, str):
         text = value.strip()
