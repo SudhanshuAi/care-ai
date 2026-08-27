@@ -1,8 +1,9 @@
 from datetime import date
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.retell.dispatcher import RetellToolDispatcher
 from app.adapters.retell.schemas import RetellCallContext, RetellToolInvocation
@@ -180,6 +181,17 @@ def test_bolna_chat_followup_gets_isolated_synthetic_call_context() -> None:
     assert context.call_id is not None
     assert context.call_id.startswith("bolna:chat:")
     assert context.from_number == "+91-98765-10001"
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_commits_autobegun_resolver_transaction() -> None:
+    session = AsyncMock(spec=AsyncSession)
+    session.in_transaction.return_value = True
+    dispatcher = RetellToolDispatcher(session, provider="bolna")
+
+    await dispatcher._commit_autobegun_read_transaction()
+
+    session.commit.assert_awaited_once()
 
 
 def test_booking_offer_error_instructs_agent_to_research() -> None:

@@ -565,6 +565,7 @@ class RetellToolDispatcher:
             start_time=self._require_datetime(args.get("start_time"), "start_time"),
             notes=args.get("notes"),
         )
+        await self._commit_autobegun_read_transaction()
         key = self._idempotency_key("create_appointment", call, args)
         response = await self._appointment_service.create(
             request,
@@ -620,6 +621,7 @@ class RetellToolDispatcher:
             start_time=self._require_datetime(args.get("start_time"), "start_time"),
             notes=args.get("notes"),
         )
+        await self._commit_autobegun_read_transaction()
         key = self._idempotency_key("reschedule_appointment", call, args)
         try:
             response = await self._appointment_service.reschedule(
@@ -686,6 +688,18 @@ class RetellToolDispatcher:
         )
         response = await self._followup_service.create(request)
         return response.model_dump(mode="json")
+
+    async def _commit_autobegun_read_transaction(self) -> None:
+        """End resolver reads before services open their atomic write block.
+
+        SQLAlchemy automatically begins a transaction for name-to-ID lookup
+        queries. Appointment services deliberately own a fresh ``begin()``
+        block for locking and mutation, so the read transaction must be
+        committed first.
+        """
+
+        if isinstance(self._session, AsyncSession) and self._session.in_transaction():
+            await self._session.commit()
 
     def _resolve_followup_call_context(
         self, args: dict[str, Any], call: RetellCallContext | None
