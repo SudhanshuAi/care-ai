@@ -554,7 +554,7 @@ class RetellToolDispatcher:
         conversation: Call | None,
     ) -> dict[str, Any]:
         request = CreateAppointmentRequest(
-            patient_id=self._require_uuid(args.get("patient_id"), "patient_id"),
+            patient_id=await self._resolve_booking_patient_id(args, conversation),
             caller_full_name=str(args["caller_full_name"]).strip(),
             practitioner_id=await self._resolve_practitioner_id(args),
             branch_id=await self._resolve_branch_id(args),
@@ -569,6 +569,41 @@ class RetellToolDispatcher:
             created_by_call_id=conversation.id if conversation else None,
         )
         return response.model_dump(mode="json")
+
+    async def _resolve_booking_patient_id(
+        self, args: dict[str, Any], conversation: Call | None
+    ) -> UUID:
+        """Resolve a booking patient without weakening identity guardrails.
+
+        Real calls normally retain the patient UUID in durable call state.
+        Bolna Chat has no ``call_sid`` and smaller LLMs may lose a UUID from an
+        older tool turn. For Bolna only, permit an exact, unique full-name
+        fallback; ambiguous or partial-name matches are still rejected.
+        """
+
+        if args.get("patient_id"):
+            return self._require_uuid(args.get("patient_id"), "patient_id")
+
+        state_patient_id = patient_id_from_call(conversation)
+        if state_patient_id:
+            return self._require_uuid(state_patient_id, "patient_id")
+
+        caller_name = str(args.get("caller_full_name") or "").strip()
+        if self._provider == PROVIDER_BOLNA and caller_name:
+            response = await self._patient_service.lookup_by_name(caller_name)
+            exact_matches = [
+                patient
+                for patient in response.patients
+                if patient.full_name.strip().casefold() == caller_name.casefold()
+            ]
+            if len(exact_matches) == 1:
+                return exact_matches[0].id
+
+        raise ValidationError(
+            "patient_id is required and must be a UUID from lookup_patient. "
+            "For Bolna Chat, caller_full_name may be used only when it exactly "
+            "and uniquely matches one patient."
+        )
 
     async def _reschedule_appointment(
         self, args: dict[str, Any], call: RetellCallContext | None

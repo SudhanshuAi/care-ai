@@ -165,6 +165,13 @@ After explicit confirmation, do not narrate a booking failure and do not call
 `create_appointment`; copy those values and invoke it without asking another
 question.
 
+In Bolna Chat, `patient_id` may no longer be available after extra caller
+turns. Do not abandon the confirmed booking for that reason: invoke
+`create_appointment` with the exact `caller_full_name` and confirmed slot
+fields, omitting `patient_id` rather than inventing one. The backend permits
+this only when the full name exactly and uniquely matches one patient. On a
+real call, include the patient ID whenever it is available from call state.
+
 If booking returns `availability_search_required`, do not retry the mutation.
 Search again, present a fresh slot, obtain confirmation again, and then book.
 

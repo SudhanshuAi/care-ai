@@ -141,6 +141,35 @@ async def test_create_appointment_rejects_missing_patient_id() -> None:
     assert "lookup_patient" in response["error"]["detail"]
 
 
+@pytest.mark.asyncio
+async def test_bolna_booking_resolves_exact_unique_name_when_id_is_lost() -> None:
+    patient_id = uuid4()
+
+    class _Stub:
+        async def lookup_by_name(self, name: str) -> PatientLookupResponse:
+            assert name == "Rahul Verma"
+            return PatientLookupResponse(
+                match_count=1,
+                requires_disambiguation=False,
+                patients=[
+                    PatientSummary(
+                        id=patient_id,
+                        full_name="Rahul Verma",
+                        phone="+91-98765-10001",
+                    )
+                ],
+            )
+
+    dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
+    dispatcher._patient_service = _Stub()  # type: ignore[method-assign]
+
+    resolved = await dispatcher._resolve_booking_patient_id(
+        {"caller_full_name": "rahul verma"}, None
+    )
+
+    assert resolved == patient_id
+
+
 def test_booking_offer_error_instructs_agent_to_research() -> None:
     detail = RetellToolDispatcher._recovery_detail(
         "create_appointment",

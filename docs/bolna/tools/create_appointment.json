@@ -1,11 +1,10 @@
 {
   "name": "create_appointment",
-  "description": "MUST call immediately after the caller explicitly confirms one offered slot. Create the appointment using exactly six values: patient_id and caller_full_name from lookup_patient, plus practitioner_id, branch_id, appointment_type_id, and start_time copied unchanged from that exact search_availability slot. Never report a system error unless this tool was actually called and returned ok=false. Never substitute names or placeholders for IDs.",
+  "description": "MUST call immediately after the caller explicitly confirms one offered slot. Pass caller_full_name from lookup_patient and copy practitioner_id, branch_id, appointment_type_id, and start_time unchanged from that exact search_availability slot. Include patient_id when it is still available; Bolna Chat may omit it because caller_full_name can be resolved only when it exactly matches one patient. Never report a system error unless this tool was actually called and returned ok=false.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
     "required": [
-      "patient_id",
       "caller_full_name",
       "practitioner_id",
       "branch_id",
@@ -15,7 +14,7 @@
     "properties": {
       "patient_id": {
         "type": "string",
-        "description": "Exact patients[].id UUID from lookup_patient."
+        "description": "Exact patients[].id UUID from lookup_patient when available. Optional only for Bolna Chat; never invent it."
       },
       "caller_full_name": {
         "type": "string",

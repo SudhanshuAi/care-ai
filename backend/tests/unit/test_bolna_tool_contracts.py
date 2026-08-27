@@ -48,13 +48,14 @@ def test_mutations_require_ids_from_prior_tool_results() -> None:
     contracts = _contracts()
 
     assert set(contracts["create_appointment"]["parameters"]["required"]) >= {
-        "patient_id",
         "caller_full_name",
         "practitioner_id",
         "branch_id",
         "appointment_type_id",
         "start_time",
     }
+    create_properties = contracts["create_appointment"]["parameters"]["properties"]
+    assert "patient_id" in create_properties
     assert set(contracts["reschedule_appointment"]["parameters"]["required"]) >= {
         "appointment_id",
         "caller_full_name",
