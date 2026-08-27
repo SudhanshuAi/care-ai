@@ -1,12 +1,15 @@
 {
   "name": "cancel_appointment",
-  "description": "Use only after list_appointments identified the real appointment_id and the caller clearly requested cancellation. Never invent an appointment_id. Mention a cancellation fee only when cancellation_fee.applicable is true.",
+  "description": "Use after the caller clearly confirms cancellation. Reuse caller_full_name already established in this conversation; never ask for it again. Include the real appointment_id from list_appointments whenever available. If omitted, the backend proceeds only when that exact patient has one upcoming appointment; multiple appointments require explicit selection. Never invent an ID. Mention a fee only when cancellation_fee.applicable is true.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
-    "required": ["appointment_id", "caller_full_name"],
+    "required": ["caller_full_name"],
     "properties": {
-      "appointment_id": { "type": "string" },
+      "appointment_id": {
+        "type": "string",
+        "description": "Exact appointments[].appointment_id UUID. Required when multiple upcoming appointments exist; omit only when exactly one exists."
+      },
       "caller_full_name": { "type": "string" },
       "reason": { "type": "string" },
       "from_number": { "type": "string" },

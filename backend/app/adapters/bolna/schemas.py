@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.adapters.retell.schemas import RetellCallContext, RetellToolInvocation
 
@@ -84,9 +84,7 @@ class BolnaToolBody(BaseModel):
     agent_id: str | None = None
 
 
-def normalize_bolna_invocation(
-    tool_name: str, body: dict[str, Any] | None
-) -> RetellToolInvocation:
+def normalize_bolna_invocation(tool_name: str, body: dict[str, Any] | None) -> RetellToolInvocation:
     """Map a Bolna custom-function POST into the shared dispatcher contract."""
 
     payload = dict(body or {})
@@ -150,13 +148,15 @@ class BolnaExecutionWebhook(BaseModel):
     agent_id: str | None = None
     telephony_data: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("telephony_data", mode="before")
+    @classmethod
+    def normalize_null_telephony_data(cls, value: Any) -> dict[str, Any]:
+        # Bolna sends explicit null for chat executions and some status events.
+        return {} if value is None else value
+
     def external_call_id(self) -> str | None:
         telephony = self.telephony_data or {}
-        raw = (
-            telephony.get("provider_call_id")
-            or telephony.get("call_sid")
-            or self.id
-        )
+        raw = telephony.get("provider_call_id") or telephony.get("call_sid") or self.id
         if raw is None:
             return None
         return f"bolna:{raw}"

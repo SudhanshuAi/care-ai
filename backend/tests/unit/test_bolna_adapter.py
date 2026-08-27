@@ -1,8 +1,10 @@
-from unittest.mock import MagicMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 
-from app.adapters.bolna.schemas import normalize_bolna_invocation
+from app.adapters.bolna.schemas import BolnaExecutionWebhook, normalize_bolna_invocation
 from app.adapters.bolna.security import verify_bolna_bearer
 from app.adapters.retell.dispatcher import RetellToolDispatcher
 from app.adapters.retell.schemas import RetellCallContext
@@ -83,6 +85,13 @@ def test_normalize_discards_missing_chat_context_placeholders() -> None:
     assert invocation.call is None
 
 
+def test_execution_webhook_accepts_null_telephony_data() -> None:
+    webhook = BolnaExecutionWebhook.model_validate({"id": "chat-execution", "telephony_data": None})
+
+    assert webhook.telephony_data == {}
+    assert webhook.external_call_id() == "bolna:chat-execution"
+
+
 def test_verify_bolna_bearer_accepts_matching_token() -> None:
     verify_bolna_bearer(
         authorization_header="Bearer secret-token",
@@ -117,3 +126,36 @@ def test_bolna_mutation_idempotency_key_uses_provider_prefix() -> None:
     )
 
     assert key.startswith("bolna:CA123:create_appointment:")
+
+
+@pytest.mark.asyncio
+async def test_bolna_resolves_the_only_upcoming_appointment() -> None:
+    dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
+    patient_id = uuid4()
+    appointment_id = uuid4()
+    dispatcher._resolve_patient_id = AsyncMock(return_value=patient_id)
+    dispatcher._appointment_service.list_for_patient = AsyncMock(
+        return_value=[SimpleNamespace(appointment_id=appointment_id)]
+    )
+
+    resolved = await dispatcher._resolve_appointment_id({"caller_full_name": "Rahul Verma"}, None)
+
+    assert resolved == appointment_id
+    dispatcher._appointment_service.list_for_patient.assert_awaited_once_with(
+        patient_id, upcoming_only=True
+    )
+
+
+@pytest.mark.asyncio
+async def test_bolna_never_guesses_between_multiple_appointments() -> None:
+    dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
+    dispatcher._resolve_patient_id = AsyncMock(return_value=uuid4())
+    dispatcher._appointment_service.list_for_patient = AsyncMock(
+        return_value=[
+            SimpleNamespace(appointment_id=uuid4()),
+            SimpleNamespace(appointment_id=uuid4()),
+        ]
+    )
+
+    with pytest.raises(ValidationError, match="More than one upcoming appointment"):
+        await dispatcher._resolve_appointment_id({"caller_full_name": "Rahul Verma"}, None)

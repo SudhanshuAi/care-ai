@@ -64,9 +64,7 @@ logger = get_logger(__name__)
 
 
 class RetellToolDispatcher:
-    def __init__(
-        self, session: AsyncSession, *, provider: str = PROVIDER_RETELL
-    ) -> None:
+    def __init__(self, session: AsyncSession, *, provider: str = PROVIDER_RETELL) -> None:
         self._session = session
         self._provider = provider
         self._patients = PatientRepository(session)
@@ -78,9 +76,7 @@ class RetellToolDispatcher:
 
         self._offers = AvailabilityOfferRepository(session)
         self._patient_service = PatientService(self._patients)
-        self._availability_service = AvailabilityService(
-            self._scheduling, self._offers
-        )
+        self._availability_service = AvailabilityService(self._scheduling, self._offers)
         self._appointment_service = AppointmentService(
             session,
             self._appointments,
@@ -163,9 +159,9 @@ class RetellToolDispatcher:
             elif name == "create_appointment":
                 result = await self._create_appointment(args, call, conversation)
             elif name == "reschedule_appointment":
-                result = await self._reschedule_appointment(args, call)
+                result = await self._reschedule_appointment(args, call, conversation)
             elif name == "cancel_appointment":
-                result = await self._cancel_appointment(args, call)
+                result = await self._cancel_appointment(args, call, conversation)
             elif name == "create_followup":
                 result = await self._create_followup(args, call)
             else:
@@ -341,8 +337,7 @@ class RetellToolDispatcher:
     def _recovery_detail(tool_name: str, detail: str) -> str:
         if (
             tool_name in {"create_appointment", "reschedule_appointment"}
-            and detail
-            == "Booking requires a prior live availability search for this exact slot."
+            and detail == "Booking requires a prior live availability search for this exact slot."
         ):
             return (
                 "Do NOT retry this booking with the same arguments. Call "
@@ -350,12 +345,9 @@ class RetellToolDispatcher:
                 "branch_id, appointment_type_id, and unchanged timezone-aware "
                 "start_time from one returned slot."
             )
-        if (
-            tool_name == "create_appointment"
-            and (
-                detail.startswith("patient_id is required and must be a UUID")
-                or detail.startswith("patient_id must be a valid UUID")
-            )
+        if tool_name == "create_appointment" and (
+            detail.startswith("patient_id is required and must be a UUID")
+            or detail.startswith("patient_id must be a valid UUID")
         ):
             return (
                 "Do NOT retry create_appointment. First call lookup_patient using "
@@ -369,24 +361,18 @@ class RetellToolDispatcher:
     def _recovery_error_code(tool_name: str, detail: str, default: str) -> str:
         if (
             tool_name in {"create_appointment", "reschedule_appointment"}
-            and detail
-            == "Booking requires a prior live availability search for this exact slot."
+            and detail == "Booking requires a prior live availability search for this exact slot."
         ):
             return "availability_search_required"
-        if (
-            tool_name == "create_appointment"
-            and (
-                detail.startswith("patient_id is required and must be a UUID")
-                or detail.startswith("patient_id must be a valid UUID")
-            )
+        if tool_name == "create_appointment" and (
+            detail.startswith("patient_id is required and must be a UUID")
+            or detail.startswith("patient_id must be a valid UUID")
         ):
             return "patient_identification_required"
         return default
 
     @staticmethod
-    def _resolve_language(
-        call: RetellCallContext | None, conversation: Call | None
-    ) -> str | None:
+    def _resolve_language(call: RetellCallContext | None, conversation: Call | None) -> str | None:
         if conversation is not None and conversation.language:
             return conversation.language
         if call is not None and call.language:
@@ -410,9 +396,7 @@ class RetellToolDispatcher:
                 return {
                     "match_count": len(narrowed),
                     "requires_disambiguation": len(narrowed) > 1,
-                    "patients": [
-                        patient.model_dump(mode="json") for patient in narrowed
-                    ],
+                    "patients": [patient.model_dump(mode="json") for patient in narrowed],
                     "lookup_strategy": "phone_and_name",
                 }
             # Inbound caller ID often won't match seed/demo phones. If the
@@ -443,15 +427,9 @@ class RetellToolDispatcher:
         Not part of the stable `/tools` REST surface; voice-provider helper.
         """
 
-        branches = list(
-            (
-                await self._session.scalars(select(Branch).order_by(Branch.name))
-            ).all()
-        )
+        branches = list((await self._session.scalars(select(Branch).order_by(Branch.name))).all())
         departments = list(
-            (
-                await self._session.scalars(select(Department).order_by(Department.name))
-            ).all()
+            (await self._session.scalars(select(Department).order_by(Department.name))).all()
         )
         practitioners = list(
             (
@@ -464,9 +442,7 @@ class RetellToolDispatcher:
         )
         appointment_types = list(
             (
-                await self._session.scalars(
-                    select(AppointmentType).order_by(AppointmentType.name)
-                )
+                await self._session.scalars(select(AppointmentType).order_by(AppointmentType.name))
             ).all()
         )
 
@@ -481,8 +457,7 @@ class RetellToolDispatcher:
                 for branch in branches
             ],
             "departments": [
-                {"id": str(department.id), "name": department.name}
-                for department in departments
+                {"id": str(department.id), "name": department.name} for department in departments
             ],
             "practitioners": [
                 {
@@ -490,9 +465,7 @@ class RetellToolDispatcher:
                     "display_name": practitioner.display_name,
                     "title": practitioner.title,
                     "department_id": str(practitioner.department_id),
-                    "branch_ids": [
-                        str(link.branch_id) for link in practitioner.branch_links
-                    ],
+                    "branch_ids": [str(link.branch_id) for link in practitioner.branch_links],
                 }
                 for practitioner in practitioners
             ],
@@ -518,9 +491,7 @@ class RetellToolDispatcher:
             patient_id, upcoming_only=upcoming_only
         )
         return {
-            "appointments": [
-                appointment.model_dump(mode="json") for appointment in appointments
-            ]
+            "appointments": [appointment.model_dump(mode="json") for appointment in appointments]
         }
 
     async def _search_availability(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -574,9 +545,7 @@ class RetellToolDispatcher:
         )
         return response.model_dump(mode="json")
 
-    async def _resolve_patient_id(
-        self, args: dict[str, Any], conversation: Call | None
-    ) -> UUID:
+    async def _resolve_patient_id(self, args: dict[str, Any], conversation: Call | None) -> UUID:
         """Resolve a Bolna patient without weakening identity guardrails.
 
         Real calls normally retain the patient UUID in durable call state.
@@ -610,9 +579,12 @@ class RetellToolDispatcher:
         )
 
     async def _reschedule_appointment(
-        self, args: dict[str, Any], call: RetellCallContext | None
+        self,
+        args: dict[str, Any],
+        call: RetellCallContext | None,
+        conversation: Call | None,
     ) -> dict[str, Any]:
-        appointment_id = self._require_appointment_id(args.get("appointment_id"))
+        appointment_id = await self._resolve_appointment_id(args, conversation)
         request = RescheduleAppointmentRequest(
             caller_full_name=str(args["caller_full_name"]).strip(),
             practitioner_id=await self._resolve_practitioner_id(args),
@@ -624,26 +596,26 @@ class RetellToolDispatcher:
         await self._commit_autobegun_read_transaction()
         key = self._idempotency_key("reschedule_appointment", call, args)
         try:
-            response = await self._appointment_service.reschedule(
-                appointment_id, request, key
-            )
+            response = await self._appointment_service.reschedule(appointment_id, request, key)
         except NotFoundError as exc:
             raise self._enrich_appointment_not_found(exc) from exc
         return response.model_dump(mode="json")
 
     async def _cancel_appointment(
-        self, args: dict[str, Any], call: RetellCallContext | None
+        self,
+        args: dict[str, Any],
+        call: RetellCallContext | None,
+        conversation: Call | None,
     ) -> dict[str, Any]:
-        appointment_id = self._require_appointment_id(args.get("appointment_id"))
+        appointment_id = await self._resolve_appointment_id(args, conversation)
         request = CancelAppointmentRequest(
             caller_full_name=str(args["caller_full_name"]).strip(),
             reason=args.get("reason"),
         )
+        await self._commit_autobegun_read_transaction()
         key = self._idempotency_key("cancel_appointment", call, args)
         try:
-            response = await self._appointment_service.cancel(
-                appointment_id, request, key
-            )
+            response = await self._appointment_service.cancel(appointment_id, request, key)
         except NotFoundError as exc:
             raise self._enrich_appointment_not_found(exc) from exc
         return response.model_dump(mode="json")
@@ -689,6 +661,37 @@ class RetellToolDispatcher:
         response = await self._followup_service.create(request)
         return response.model_dump(mode="json")
 
+    async def _resolve_appointment_id(
+        self, args: dict[str, Any], conversation: Call | None
+    ) -> UUID:
+        """Resolve a missing Bolna appointment ID only when the match is unique.
+
+        Bolna's smaller voice model can lose the UUID returned by
+        ``list_appointments`` across the availability and confirmation turns.
+        An exact, unique patient name plus exactly one upcoming appointment is
+        still unambiguous. Multiple appointments are never guessed.
+        """
+
+        if args.get("appointment_id"):
+            return self._require_appointment_id(args.get("appointment_id"))
+
+        if self._provider != PROVIDER_BOLNA:
+            return self._require_appointment_id(None)
+
+        patient_id = await self._resolve_patient_id(args, conversation)
+        appointments = await self._appointment_service.list_for_patient(
+            patient_id, upcoming_only=True
+        )
+        if len(appointments) == 1:
+            return appointments[0].appointment_id
+        if not appointments:
+            raise NotFoundError("No upcoming appointment was found for this patient.")
+        raise ValidationError(
+            "More than one upcoming appointment exists. Call list_appointments, "
+            "ask which appointment the caller means, and pass that exact "
+            "appointments[].appointment_id."
+        )
+
     async def _commit_autobegun_read_transaction(self) -> None:
         """End resolver reads before services open their atomic write block.
 
@@ -715,9 +718,7 @@ class RetellToolDispatcher:
             synthetic_id = current_request_id() or str(uuid4())
             call = RetellCallContext(
                 call_id=f"bolna:chat:{synthetic_id}",
-                from_number=str(
-                    args.get("phone") or args.get("from_number") or "chat-unknown"
-                ),
+                from_number=str(args.get("phone") or args.get("from_number") or "chat-unknown"),
                 direction="inbound",
             )
         return call
@@ -727,12 +728,8 @@ class RetellToolDispatcher:
             return self._require_uuid(args.get("appointment_type_id"), "appointment_type_id")
         name = (args.get("appointment_type_name") or "").strip()
         if not name:
-            raise ValidationError(
-                "appointment_type_id or appointment_type_name is required."
-            )
-        statement = select(AppointmentType).where(
-            AppointmentType.name.ilike(f"%{name}%")
-        )
+            raise ValidationError("appointment_type_id or appointment_type_name is required.")
+        statement = select(AppointmentType).where(AppointmentType.name.ilike(f"%{name}%"))
         matches = list((await self._session.scalars(statement)).all())
         if not matches:
             raise NotFoundError(f"No appointment type matched {name!r}.")
@@ -753,9 +750,7 @@ class RetellToolDispatcher:
         if not matches:
             raise NotFoundError(f"No branch matched {name!r}.")
         if len(matches) > 1:
-            raise ValidationError(
-                f"Multiple branches matched {name!r}; pass branch_id."
-            )
+            raise ValidationError(f"Multiple branches matched {name!r}; pass branch_id.")
         return matches[0].id
 
     async def _resolve_department_id(self, args: dict[str, Any]) -> UUID:
@@ -769,9 +764,7 @@ class RetellToolDispatcher:
         if not matches:
             raise NotFoundError(f"No department matched {name!r}.")
         if len(matches) > 1:
-            raise ValidationError(
-                f"Multiple departments matched {name!r}; pass department_id."
-            )
+            raise ValidationError(f"Multiple departments matched {name!r}; pass department_id.")
         return matches[0].id
 
     async def _resolve_practitioner_id(self, args: dict[str, Any]) -> UUID:
@@ -780,16 +773,12 @@ class RetellToolDispatcher:
         name = (args.get("practitioner_name") or "").strip()
         if not name:
             raise ValidationError("practitioner_id or practitioner_name is required.")
-        statement = select(Practitioner).where(
-            Practitioner.display_name.ilike(f"%{name}%")
-        )
+        statement = select(Practitioner).where(Practitioner.display_name.ilike(f"%{name}%"))
         matches = list((await self._session.scalars(statement)).all())
         if not matches:
             raise NotFoundError(f"No practitioner matched {name!r}.")
         if len(matches) > 1:
-            raise ValidationError(
-                f"Multiple practitioners matched {name!r}; pass practitioner_id."
-            )
+            raise ValidationError(f"Multiple practitioners matched {name!r}; pass practitioner_id.")
         return matches[0].id
 
     async def _optional_uuid(
@@ -881,9 +870,7 @@ class RetellToolDispatcher:
         try:
             return date.fromisoformat(str(value)[:10])
         except ValueError as exc:
-            raise ValidationError(
-                f"Invalid date {value!r}; expected YYYY-MM-DD."
-            ) from exc
+            raise ValidationError(f"Invalid date {value!r}; expected YYYY-MM-DD.") from exc
 
     @staticmethod
     def _optional_time(value: Any) -> time | None:
@@ -897,9 +884,7 @@ class RetellToolDispatcher:
         try:
             return time.fromisoformat(text)
         except ValueError as exc:
-            raise ValidationError(
-                f"Invalid time {value!r}; expected HH:MM or HH:MM:SS."
-            ) from exc
+            raise ValidationError(f"Invalid time {value!r}; expected HH:MM or HH:MM:SS.") from exc
 
     @staticmethod
     def _require_datetime(value: Any, field: str) -> datetime:
@@ -912,8 +897,7 @@ class RetellToolDispatcher:
                 parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
             except ValueError as exc:
                 raise ValidationError(
-                    f"{field} must be an ISO-8601 datetime with timezone offset "
-                    f"(got {value!r})."
+                    f"{field} must be an ISO-8601 datetime with timezone offset (got {value!r})."
                 ) from exc
         if parsed.tzinfo is None:
             raise ValidationError(f"{field} must include a timezone offset.")

@@ -22,8 +22,7 @@ EXPECTED_TOOLS = {
 
 def _contracts() -> dict[str, dict[str, object]]:
     return {
-        path.stem: json.loads(path.read_text(encoding="utf-8"))
-        for path in TOOLS_DIR.glob("*.json")
+        path.stem: json.loads(path.read_text(encoding="utf-8")) for path in TOOLS_DIR.glob("*.json")
     }
 
 
@@ -61,7 +60,7 @@ def test_followup_does_not_require_phone_only_call_context() -> None:
     assert set(followup["parameters"]["required"]) == {"category", "notes"}
 
 
-def test_mutations_require_ids_from_prior_tool_results() -> None:
+def test_mutations_require_slot_ids_and_allow_safe_appointment_resolution() -> None:
     contracts = _contracts()
 
     assert set(contracts["create_appointment"]["parameters"]["required"]) >= {
@@ -74,13 +73,14 @@ def test_mutations_require_ids_from_prior_tool_results() -> None:
     create_properties = contracts["create_appointment"]["parameters"]["properties"]
     assert "patient_id" not in create_properties
     assert set(contracts["reschedule_appointment"]["parameters"]["required"]) >= {
-        "appointment_id",
         "caller_full_name",
         "practitioner_id",
         "branch_id",
         "appointment_type_id",
         "start_time",
     }
+    assert "appointment_id" in contracts["reschedule_appointment"]["parameters"]["properties"]
+    assert contracts["cancel_appointment"]["parameters"]["required"] == ["caller_full_name"]
     list_parameters = contracts["list_appointments"]["parameters"]
     assert list_parameters["required"] == ["caller_full_name"]
     assert "patient_id" in list_parameters["properties"]
