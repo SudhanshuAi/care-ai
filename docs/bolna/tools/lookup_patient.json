@@ -1,17 +1,13 @@
 {
   "name": "lookup_patient",
-  "description": "Look up patient records by phone and/or full name. ALWAYS call this when a caller phone may map to multiple people. Never assume identity when match_count > 1 or requires_disambiguation is true.",
+  "description": "MUST call as soon as the caller provides their full name. A full name alone is sufficient; never ask the caller to provide a phone number. Bolna may include from_number silently when real inbound caller ID is available. If multiple records are returned, ask who the appointment is for and call again with the complete name; never guess.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
     "properties": {
-      "phone": {
-        "type": "string",
-        "description": "Caller phone. Prefer from_number when available."
-      },
       "full_name": {
         "type": "string",
-        "description": "Caller full name used to find or disambiguate patients."
+        "description": "Complete caller/patient name. This is sufficient for lookup; do not collect a phone number."
       },
       "from_number": {
         "type": "string",
@@ -21,7 +17,8 @@
         "type": "string",
         "description": "Bolna/telephony call id from context {call_sid}."
       }
-    }
+    },
+    "required": ["full_name"]
   },
   "key": "custom_task",
   "value": {
@@ -32,7 +29,6 @@
       "Content-Type": "application/json"
     },
     "param": {
-      "phone": "%(phone)s",
       "full_name": "%(full_name)s",
       "from_number": "%(from_number)s",
       "call_sid": "%(call_sid)s"
