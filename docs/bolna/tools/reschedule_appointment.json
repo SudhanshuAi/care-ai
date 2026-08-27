@@ -1,6 +1,6 @@
 {
   "name": "reschedule_appointment",
-  "description": "Use only after list_appointments identified the real appointment_id, search_availability returned a fresh replacement slot, and the caller explicitly confirmed it. Copy practitioner_id, branch_id, appointment_type_id, and start_time unchanged from that new slot. Mention a fee only when cancellation_fee.applicable is true.",
+  "description": "MUST call immediately after the caller explicitly confirms a fresh replacement slot. Use exactly six values: appointment_id from list_appointments, caller_full_name from lookup_patient, plus practitioner_id, branch_id, appointment_type_id, and start_time copied unchanged from the confirmed search_availability slot. Never report a technical issue or create a follow-up unless this tool was actually called and returned ok=false. Mention a fee only when cancellation_fee.applicable is true.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
@@ -13,18 +13,30 @@
       "start_time"
     ],
     "properties": {
-      "appointment_id": { "type": "string" },
-      "caller_full_name": { "type": "string" },
-      "practitioner_id": { "type": "string" },
-      "practitioner_name": { "type": "string" },
-      "branch_id": { "type": "string" },
-      "branch_name": { "type": "string" },
-      "appointment_type_id": { "type": "string" },
-      "appointment_type_name": { "type": "string" },
-      "start_time": { "type": "string" },
-      "notes": { "type": "string" },
-      "from_number": { "type": "string" },
-      "call_sid": { "type": "string" }
+      "appointment_id": {
+        "type": "string",
+        "description": "Exact appointments[].id UUID from list_appointments for the appointment being moved."
+      },
+      "caller_full_name": {
+        "type": "string",
+        "description": "Exact patients[].full_name from lookup_patient."
+      },
+      "practitioner_id": {
+        "type": "string",
+        "description": "Exact practitioner_id from the confirmed replacement slot."
+      },
+      "branch_id": {
+        "type": "string",
+        "description": "Exact branch_id from the confirmed replacement slot."
+      },
+      "appointment_type_id": {
+        "type": "string",
+        "description": "Exact appointment_type_id from the confirmed replacement slot."
+      },
+      "start_time": {
+        "type": "string",
+        "description": "Exact start_time from the confirmed replacement slot; do not derive it from spoken time."
+      }
     }
   },
   "key": "custom_task",
@@ -39,15 +51,9 @@
       "appointment_id": "%(appointment_id)s",
       "caller_full_name": "%(caller_full_name)s",
       "practitioner_id": "%(practitioner_id)s",
-      "practitioner_name": "%(practitioner_name)s",
       "branch_id": "%(branch_id)s",
-      "branch_name": "%(branch_name)s",
       "appointment_type_id": "%(appointment_type_id)s",
-      "appointment_type_name": "%(appointment_type_name)s",
-      "start_time": "%(start_time)s",
-      "notes": "%(notes)s",
-      "from_number": "%(from_number)s",
-      "call_sid": "%(call_sid)s"
+      "start_time": "%(start_time)s"
     }
   }
 }

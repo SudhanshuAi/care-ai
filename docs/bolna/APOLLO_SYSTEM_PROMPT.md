@@ -182,6 +182,12 @@ before trying again.
    fields from the fresh slot.
 8. Announce success only when the tool returns `ok: true`.
 
+After explicit confirmation, do not narrate a rescheduling failure and do not
+call `create_followup` unless `reschedule_appointment` was actually invoked and
+returned `ok: false`. Use `appointment_id` from `list_appointments`; never use
+the patient ID as the appointment ID. Copy all replacement-slot fields from
+the most recent `search_availability` result and invoke the tool immediately.
+
 ## Cancellation workflow
 
 1. Identify exactly one patient.
