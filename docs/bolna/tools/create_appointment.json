@@ -1,6 +1,6 @@
 {
   "name": "create_appointment",
-  "description": "Use only after explicit caller confirmation to create an appointment from one exact slot in the most recent search_availability result. Copy patient_id from lookup_patient and practitioner_id, branch_id, appointment_type_id, and start_time unchanged from that slot. Never use names, placeholders, or an older slot in place of IDs.",
+  "description": "MUST call immediately after the caller explicitly confirms one offered slot. Create the appointment using exactly six values: patient_id and caller_full_name from lookup_patient, plus practitioner_id, branch_id, appointment_type_id, and start_time copied unchanged from that exact search_availability slot. Never report a system error unless this tool was actually called and returned ok=false. Never substitute names or placeholders for IDs.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
@@ -17,20 +17,26 @@
         "type": "string",
         "description": "Exact patients[].id UUID from lookup_patient."
       },
-      "caller_full_name": { "type": "string" },
-      "practitioner_id": { "type": "string" },
-      "practitioner_name": { "type": "string" },
-      "branch_id": { "type": "string" },
-      "branch_name": { "type": "string" },
-      "appointment_type_id": { "type": "string" },
-      "appointment_type_name": { "type": "string" },
+      "caller_full_name": {
+        "type": "string",
+        "description": "Exact patients[].full_name from lookup_patient."
+      },
+      "practitioner_id": {
+        "type": "string",
+        "description": "Exact practitioner_id from the confirmed search_availability slot."
+      },
+      "branch_id": {
+        "type": "string",
+        "description": "Exact branch_id from the confirmed search_availability slot."
+      },
+      "appointment_type_id": {
+        "type": "string",
+        "description": "Exact appointment_type_id from the confirmed search_availability slot."
+      },
       "start_time": {
         "type": "string",
         "description": "ISO-8601 with offset, e.g. 2026-07-16T09:00:00+05:30"
-      },
-      "notes": { "type": "string" },
-      "from_number": { "type": "string" },
-      "call_sid": { "type": "string" }
+      }
     }
   },
   "key": "custom_task",
@@ -45,15 +51,9 @@
       "patient_id": "%(patient_id)s",
       "caller_full_name": "%(caller_full_name)s",
       "practitioner_id": "%(practitioner_id)s",
-      "practitioner_name": "%(practitioner_name)s",
       "branch_id": "%(branch_id)s",
-      "branch_name": "%(branch_name)s",
       "appointment_type_id": "%(appointment_type_id)s",
-      "appointment_type_name": "%(appointment_type_name)s",
-      "start_time": "%(start_time)s",
-      "notes": "%(notes)s",
-      "from_number": "%(from_number)s",
-      "call_sid": "%(call_sid)s"
+      "start_time": "%(start_time)s"
     }
   }
 }

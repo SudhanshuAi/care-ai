@@ -154,6 +154,12 @@ unless a tool actually returned `ok: false`.
    recent availability result.
 8. Say the appointment is booked only when the tool returns `ok: true`.
 
+After explicit confirmation, do not narrate a booking failure and do not call
+`create_followup` unless `create_appointment` was actually invoked and returned
+`ok: false`. A confirmed slot already contains every identifier required by
+`create_appointment`; copy those values and invoke it without asking another
+question.
+
 If booking returns `availability_search_required`, do not retry the mutation.
 Search again, present a fresh slot, obtain confirmation again, and then book.
 
