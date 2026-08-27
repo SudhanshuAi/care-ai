@@ -26,9 +26,34 @@ _META_KEYS = frozenset(
 )
 
 
+def _clean_optional_text(value: Any) -> str | None:
+    """Discard missing values that Bolna serializes as placeholder strings.
+
+    Bolna Chat has no telephony context, and may send values such as ``None``
+    or an unsubstituted ``%(call_sid)s`` instead of JSON null. Those must not
+    become durable call IDs (for example ``bolna:None``), otherwise unrelated
+    chat sessions restore the same conversation state.
+    """
+
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.casefold() in {"none", "null", "undefined"}:
+        return None
+    if text.startswith("%(") and text.endswith((")s", ")i", ")f")):
+        return None
+    if text.startswith("{{") and text.endswith("}}"):
+        return None
+    return text
+
+
 def _coerce_arg(key: str, value: Any) -> Any:
     """Bolna `%(param)s` substitution always yields strings."""
 
+    if isinstance(value, str):
+        value = _clean_optional_text(value)
+        if value is None:
+            return None
     if key == "earliest_only" and isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "y"}
     if key == "limit" and isinstance(value, str):
@@ -75,29 +100,38 @@ def normalize_bolna_invocation(
             telephony.get("provider_call_id") or telephony.get("call_sid"),
         )
 
-    call_id = payload.get("call_sid") or payload.get("execution_id")
+    call_id = _clean_optional_text(payload.get("call_sid")) or _clean_optional_text(
+        payload.get("execution_id")
+    )
     if call_id is not None:
         call_id = f"bolna:{call_id}"
 
     from_number = (
-        payload.get("from_number")
-        or payload.get("phone")
-        or (telephony.get("from_number") if isinstance(telephony, dict) else None)
+        _clean_optional_text(payload.get("from_number"))
+        or _clean_optional_text(payload.get("phone"))
+        or _clean_optional_text(
+            telephony.get("from_number") if isinstance(telephony, dict) else None
+        )
     )
-    to_number = payload.get("to_number")
-    direction = payload.get("call_type") or payload.get("direction")
+    to_number = _clean_optional_text(payload.get("to_number"))
+    direction = _clean_optional_text(payload.get("call_type")) or _clean_optional_text(
+        payload.get("direction")
+    )
 
-    args = {
-        key: _coerce_arg(key, value)
-        for key, value in payload.items()
-        if key not in _META_KEYS and value is not None and value != ""
-    }
+    args: dict[str, Any] = {}
+    for key, value in payload.items():
+        if key in _META_KEYS:
+            continue
+        coerced = _coerce_arg(key, value)
+        if coerced is not None and coerced != "":
+            args[key] = coerced
 
     call: RetellCallContext | None = None
-    if call_id or from_number or to_number or direction or payload.get("agent_id"):
+    agent_id = _clean_optional_text(payload.get("agent_id"))
+    if call_id or from_number or to_number or direction or agent_id:
         call = RetellCallContext(
             call_id=str(call_id) if call_id else None,
-            agent_id=str(payload["agent_id"]) if payload.get("agent_id") else None,
+            agent_id=agent_id,
             from_number=str(from_number) if from_number else None,
             to_number=str(to_number) if to_number else None,
             direction=str(direction) if direction else None,

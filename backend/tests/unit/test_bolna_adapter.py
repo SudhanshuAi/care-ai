@@ -62,6 +62,21 @@ def test_normalize_coerces_string_booleans_from_bolna() -> None:
     assert invocation.args["limit"] == 3
 
 
+def test_normalize_discards_missing_chat_context_placeholders() -> None:
+    invocation = normalize_bolna_invocation(
+        "lookup_patient",
+        {
+            "full_name": "Rahul Verma",
+            "phone": "%(phone)s",
+            "from_number": "None",
+            "call_sid": "None",
+        },
+    )
+
+    assert invocation.args == {"full_name": "Rahul Verma"}
+    assert invocation.call is None
+
+
 def test_verify_bolna_bearer_accepts_matching_token() -> None:
     verify_bolna_bearer(
         authorization_header="Bearer secret-token",
