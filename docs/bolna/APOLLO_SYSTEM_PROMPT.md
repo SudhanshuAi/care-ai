@@ -123,6 +123,13 @@ department, branch, or practitioner identifiers.
 Use `search_availability` for every availability claim. Re-run it whenever the
 caller changes the doctor, specialty, branch, date, or time preference.
 
+After a successful `get_clinic_catalog`, call `search_availability` in the
+same turn as soon as the requested appointment type and branch are known. If
+the caller asked for the earliest slot without naming a doctor, search across
+all eligible practitioners by omitting the practitioner field. Do not ask the
+caller to choose or confirm a doctor first. Never describe a technical issue
+unless a tool actually returned `ok: false`.
+
 - For “today”, “earliest”, or “as soon as possible”, omit `appointment_date`.
 - For a specific future day or date, pass the resolved YYYY-MM-DD date.
 - Omit unknown optional fields. Never send empty strings, dashes, “N/A”,

@@ -1,29 +1,44 @@
 {
   "name": "search_availability",
-  "description": "Search LIVE appointment availability from the database. NEVER invent slots. Re-run whenever the caller changes date, time, doctor, specialty, or branch. Set earliest_only=true for earliest-slot requests. Leave appointment_date blank for 'today'/'earliest available' requests -- the backend uses the real current date; do not compute or guess it yourself.",
+  "description": "MUST call immediately after patient lookup and catalog lookup when the caller asks for appointment availability. Search the live database; never invent slots. If the caller asks for the earliest slot and gives no doctor preference, set earliest_only=true and OMIT practitioner_name -- do not ask them to choose a doctor. Re-run whenever date, time, doctor, specialty, or branch changes. Omit appointment_date for 'today', 'earliest', or 'as soon as possible'.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
     "properties": {
-      "appointment_type_id": { "type": "string" },
-      "appointment_type_name": { "type": "string" },
-      "branch_id": { "type": "string" },
-      "branch_name": { "type": "string" },
-      "department_id": { "type": "string" },
-      "department_name": { "type": "string" },
-      "practitioner_id": { "type": "string" },
-      "practitioner_name": { "type": "string" },
+      "appointment_type_name": {
+        "type": "string",
+        "description": "Exact appointment type name from get_clinic_catalog, for example Dermatology Consultation."
+      },
+      "branch_name": {
+        "type": "string",
+        "description": "Exact branch name from get_clinic_catalog, for example Indiranagar Branch."
+      },
+      "department_name": {
+        "type": "string",
+        "description": "Exact department name from get_clinic_catalog, for example Dermatology."
+      },
+      "practitioner_name": {
+        "type": "string",
+        "description": "Exact doctor name only when the caller requested a doctor. Omit when they have no preference."
+      },
       "appointment_date": {
         "type": "string",
         "description": "YYYY-MM-DD in branch timezone. Leave blank for 'today'/'earliest available' -- never guess today's date."
       },
       "start_time": { "type": "string", "description": "HH:MM:SS local lower bound." },
       "end_time": { "type": "string", "description": "HH:MM:SS local upper bound." },
-      "earliest_only": { "type": "boolean" },
-      "limit": { "type": "integer" },
-      "from_number": { "type": "string" },
-      "call_sid": { "type": "string" }
-    }
+      "earliest_only": {
+        "type": "boolean",
+        "description": "True when the caller asks for earliest, soonest, or as soon as possible; otherwise false."
+      },
+      "limit": { "type": "integer", "description": "Maximum slots to return; use 3." }
+    },
+    "required": [
+      "appointment_type_name",
+      "branch_name",
+      "department_name",
+      "earliest_only"
+    ]
   },
   "key": "custom_task",
   "value": {
@@ -34,21 +49,15 @@
       "Content-Type": "application/json"
     },
     "param": {
-      "appointment_type_id": "%(appointment_type_id)s",
       "appointment_type_name": "%(appointment_type_name)s",
-      "branch_id": "%(branch_id)s",
       "branch_name": "%(branch_name)s",
-      "department_id": "%(department_id)s",
       "department_name": "%(department_name)s",
-      "practitioner_id": "%(practitioner_id)s",
       "practitioner_name": "%(practitioner_name)s",
       "appointment_date": "%(appointment_date)s",
       "start_time": "%(start_time)s",
       "end_time": "%(end_time)s",
       "earliest_only": "%(earliest_only)s",
-      "limit": "%(limit)s",
-      "from_number": "%(from_number)s",
-      "call_sid": "%(call_sid)s"
+      "limit": "%(limit)i"
     }
   }
 }
