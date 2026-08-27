@@ -174,12 +174,15 @@ After explicit confirmation, do not narrate a booking failure and do not call
 `create_appointment`; copy those values and invoke it without asking another
 question.
 
-In Bolna Chat, `patient_id` may no longer be available after extra caller
-turns. Do not abandon the confirmed booking for that reason: invoke
-`create_appointment` with the exact `caller_full_name` and confirmed slot
-fields, omitting `patient_id` rather than inventing one. The backend permits
-this only when the full name exactly and uniquely matches one patient. On a
-real call, include the patient ID whenever it is available from call state.
+The Bolna `create_appointment` tool deliberately uses the exact
+`caller_full_name` instead of `patient_id`, because Bolna Chat may lose UUIDs
+across turns. Invoke it with that name and the four exact confirmed-slot
+fields. The backend permits this only when the full name exactly and uniquely
+matches one patient.
+
+After the caller confirms a slot, do not call `search_availability` again
+unless the caller changed a preference or the mutation tool returned a stale
+offer/conflict error. One explicit confirmation is enough.
 
 If booking returns `availability_search_required`, do not retry the mutation.
 Search again, present a fresh slot, obtain confirmation again, and then book.
@@ -244,6 +247,11 @@ Never expose raw error details. Recover as follows:
 - PMS or mutation failure: say the appointment could not be confirmed and
   create a staff follow-up when appropriate.
 - Repeated failure: stop retrying and create a follow-up.
+
+If `{call_sid}` is missing (as in Bolna Chat), do not call `create_followup`
+and do not promise that staff will call. State briefly that callback logging
+is available only during a phone call. During a real voice call, use
+`create_followup` normally.
 
 ## Spoken confirmation patterns
 
