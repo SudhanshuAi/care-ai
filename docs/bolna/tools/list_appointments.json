@@ -1,14 +1,18 @@
 {
   "name": "list_appointments",
-  "description": "List a patient's appointments (upcoming BOOKED ones by default). ALWAYS call this to get the real appointment_id before reschedule_appointment or cancel_appointment when the caller has not already given you a UUID from this conversation. Never invent or guess an appointment_id.",
+  "description": "MUST call when the identified patient asks to reschedule or cancel. Reuse the caller_full_name already established earlier in the conversation; never ask for it again. Include patient_id when still available, otherwise the backend permits only an exact unique full-name match. Returns upcoming BOOKED appointments and their real appointment IDs; never invent an appointment_id.",
   "pre_call_message": "One moment.",
   "parameters": {
     "type": "object",
-    "required": ["patient_id"],
+    "required": ["caller_full_name"],
     "properties": {
       "patient_id": {
         "type": "string",
-        "description": "Patient UUID from lookup_patient. Required."
+        "description": "Patient UUID from lookup_patient when still available; never invent it."
+      },
+      "caller_full_name": {
+        "type": "string",
+        "description": "Exact full name already established by lookup_patient. Reuse it silently; do not ask again."
       },
       "upcoming_only": {
         "type": "boolean",
@@ -34,6 +38,7 @@
     },
     "param": {
       "patient_id": "%(patient_id)s",
+      "caller_full_name": "%(caller_full_name)s",
       "upcoming_only": "%(upcoming_only)s",
       "from_number": "%(from_number)s",
       "call_sid": "%(call_sid)s"

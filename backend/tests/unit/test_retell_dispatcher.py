@@ -163,7 +163,7 @@ async def test_bolna_booking_resolves_exact_unique_name_when_id_is_lost() -> Non
     dispatcher = RetellToolDispatcher(MagicMock(), provider="bolna")
     dispatcher._patient_service = _Stub()  # type: ignore[method-assign]
 
-    resolved = await dispatcher._resolve_booking_patient_id(
+    resolved = await dispatcher._resolve_patient_id(
         {"caller_full_name": "rahul verma"}, None
     )
 

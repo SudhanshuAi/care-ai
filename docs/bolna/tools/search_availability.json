@@ -35,7 +35,6 @@
     },
     "required": [
       "appointment_type_name",
-      "branch_name",
       "department_name",
       "earliest_only"
     ]

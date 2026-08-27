@@ -156,7 +156,7 @@ class RetellToolDispatcher:
             elif name == "get_clinic_catalog":
                 result = await self._get_clinic_catalog()
             elif name == "list_appointments":
-                result = await self._list_appointments(args)
+                result = await self._list_appointments(args, conversation)
             elif name == "search_availability":
                 result = await self._search_availability(args)
             elif name == "create_appointment":
@@ -508,8 +508,10 @@ class RetellToolDispatcher:
             ],
         }
 
-    async def _list_appointments(self, args: dict[str, Any]) -> dict[str, Any]:
-        patient_id = self._require_uuid(args.get("patient_id"), "patient_id")
+    async def _list_appointments(
+        self, args: dict[str, Any], conversation: Call | None
+    ) -> dict[str, Any]:
+        patient_id = await self._resolve_patient_id(args, conversation)
         upcoming_only = self._optional_bool(args.get("upcoming_only"), default=True)
         appointments = await self._appointment_service.list_for_patient(
             patient_id, upcoming_only=upcoming_only
@@ -554,7 +556,7 @@ class RetellToolDispatcher:
         conversation: Call | None,
     ) -> dict[str, Any]:
         request = CreateAppointmentRequest(
-            patient_id=await self._resolve_booking_patient_id(args, conversation),
+            patient_id=await self._resolve_patient_id(args, conversation),
             caller_full_name=str(args["caller_full_name"]).strip(),
             practitioner_id=await self._resolve_practitioner_id(args),
             branch_id=await self._resolve_branch_id(args),
@@ -570,15 +572,15 @@ class RetellToolDispatcher:
         )
         return response.model_dump(mode="json")
 
-    async def _resolve_booking_patient_id(
+    async def _resolve_patient_id(
         self, args: dict[str, Any], conversation: Call | None
     ) -> UUID:
-        """Resolve a booking patient without weakening identity guardrails.
+        """Resolve a Bolna patient without weakening identity guardrails.
 
         Real calls normally retain the patient UUID in durable call state.
-        Bolna Chat has no ``call_sid`` and smaller LLMs may lose a UUID from an
-        older tool turn. For Bolna only, permit an exact, unique full-name
-        fallback; ambiguous or partial-name matches are still rejected.
+        Bolna Chat has no ``call_sid`` and smaller LLMs may lose a UUID across
+        turns. For Bolna only, permit an exact, unique full-name fallback;
+        ambiguous or partial-name matches are still rejected.
         """
 
         if args.get("patient_id"):

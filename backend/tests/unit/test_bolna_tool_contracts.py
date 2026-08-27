@@ -64,6 +64,6 @@ def test_mutations_require_ids_from_prior_tool_results() -> None:
         "appointment_type_id",
         "start_time",
     }
-    assert contracts["list_appointments"]["parameters"]["required"] == [
-        "patient_id"
-    ]
+    list_parameters = contracts["list_appointments"]["parameters"]
+    assert list_parameters["required"] == ["caller_full_name"]
+    assert "patient_id" in list_parameters["properties"]
